@@ -73,13 +73,12 @@
 
         // ステータス確認してボタン制御
         function checkStatus(userId) {
-    fetch(`${GAS_URL}?type=status&userId=${userId}`, {
-        method: 'GET',
-        redirect: 'follow'  // ★これを追加
+    fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ type: "status", userId: userId })
     })
-    .then(res => res.text())  // ★json()→text()に変更
-    .then(text => {
-        const status = JSON.parse(text);  // ★手動でパース
+    .then(res => res.json())
+    .then(status => {
         const msg = document.getElementById('statusMsg');
         msg.style.display = 'block';
 
@@ -103,11 +102,10 @@
     })
     .catch(err => {
         console.error("ステータス確認エラー:", err);
-        // 失敗時はボタンを有効化して入力させる
         document.getElementById('submitBtn').disabled = false;
         const msg = document.getElementById('statusMsg');
         msg.style.display = 'block';
-        msg.textContent = "ステータス確認をスキップしました。入力してください。";
+        msg.textContent = "ステータス確認をスキップ。入力してください。";
         msg.style.background = "#fff3cd";
         msg.style.borderColor = "#ffc107";
     });
