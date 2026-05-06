@@ -73,35 +73,45 @@
 
         // ステータス確認してボタン制御
         function checkStatus(userId) {
-            fetch(`${GAS_URL}?type=status&userId=${userId}`)
-                .then(res => res.json())
-                .then(status => {
-                    const msg = document.getElementById('statusMsg');
-                    msg.style.display = 'block';
+    fetch(`${GAS_URL}?type=status&userId=${userId}`, {
+        method: 'GET',
+        redirect: 'follow'  // ★これを追加
+    })
+    .then(res => res.text())  // ★json()→text()に変更
+    .then(text => {
+        const status = JSON.parse(text);  // ★手動でパース
+        const msg = document.getElementById('statusMsg');
+        msg.style.display = 'block';
 
-                    if (!status.inspectionDone) {
-                        msg.textContent = "⚠️ 本日の日常点検が未完了です。先に点検を行ってください。";
-                        msg.style.background = "#f8d7da";
-                        msg.style.borderColor = "#f5c6cb";
-                        return;
-                    }
-                    if (status.workStartDone) {
-                        msg.textContent = "✅ 本日の業務開始は登録済みです。";
-                        msg.style.background = "#d4edda";
-                        msg.style.borderColor = "#c3e6cb";
-                        return;
-                    }
-
-                    msg.textContent = "✅ 点検完了済み。業務開始を入力してください。";
-                    msg.style.background = "#d4edda";
-                    msg.style.borderColor = "#c3e6cb";
-                    document.getElementById('submitBtn').disabled = false;
-                })
-                .catch(() => {
-                    // ステータス確認失敗時はとりあえず入力可能にする
-                    document.getElementById('submitBtn').disabled = false;
-                });
+        if (!status.inspectionDone) {
+            msg.textContent = "⚠️ 本日の日常点検が未完了です。先に点検を行ってください。";
+            msg.style.background = "#f8d7da";
+            msg.style.borderColor = "#f5c6cb";
+            return;
         }
+        if (status.workStartDone) {
+            msg.textContent = "✅ 本日の業務開始は登録済みです。";
+            msg.style.background = "#d4edda";
+            msg.style.borderColor = "#c3e6cb";
+            return;
+        }
+
+        msg.textContent = "✅ 点検完了済み。業務開始を入力してください。";
+        msg.style.background = "#d4edda";
+        msg.style.borderColor = "#c3e6cb";
+        document.getElementById('submitBtn').disabled = false;
+    })
+    .catch(err => {
+        console.error("ステータス確認エラー:", err);
+        // 失敗時はボタンを有効化して入力させる
+        document.getElementById('submitBtn').disabled = false;
+        const msg = document.getElementById('statusMsg');
+        msg.style.display = 'block';
+        msg.textContent = "ステータス確認をスキップしました。入力してください。";
+        msg.style.background = "#fff3cd";
+        msg.style.borderColor = "#ffc107";
+    });
+}
 
         // LIFF初期化
         liff.init({ liffId: LIFF_ID })
