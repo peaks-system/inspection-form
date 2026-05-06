@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>業務終了</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #fff4f0; color: #333; }
+        section { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h3 { border-left: 5px solid #e05c2a; padding-left: 10px; margin-top: 0; font-size: 16px; }
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
+        .item:last-child { border-bottom: none; }
+        label { font-size: 14px; flex: 1; padding-right: 10px; }
+        input[type="text"], input[type="number"], input[type="time"] {
+            padding: 8px; border-radius: 4px; border: 1px solid #ccc; background: #fff; font-size: 14px;
+        }
+        textarea { width: 100%; height: 70px; margin-top: 10px; border-radius: 4px; border: 1px solid #ccc; padding: 10px; box-sizing: border-box; font-size: 14px; }
+        button { width: 100%; padding: 15px; background: #e05c2a; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        button:disabled { background: #aaa; }
+        #statusMsg { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 15px; margin-bottom: 15px; font-size: 14px; display: none; }
+        #loader { display: none; text-align: center; padding: 15px; color: #555; }
+        #userInfo { background: #fce8e0; border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div id="userInfo">読み込み中...</div>
+    <div id="statusMsg"></div>
+    <div id="loader">送信中...</div>
+
+    <form id="workEndForm">
+        <section>
+            <h3>業務終了情報</h3>
+            <div class="item">
+                <label>終了時刻</label>
+                <input type="time" name="endTime" id="endTime">
+            </div>
+            <div class="item">
+                <label>終了メーター（km）</label>
+                <input type="number" name="meterEnd" placeholder="例：12567">
+            </div>
+            <div class="item">
+                <label>配送件数（任意）</label>
+                <input type="number" name="deliveryCount" placeholder="例：35">
+            </div>
+        </section>
+        <section>
+            <h3>備考</h3>
+            <textarea name="notes" placeholder="任意入力"></textarea>
+        </section>
+        <button type="submit" id="submitBtn" disabled>業務終了を送信</button>
+    </form>
+
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+        const LIFF_ID = "2009986845-6g0rOyBc"; // ★LIFFアプリが別なら変更
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyUcYCeEGIKKNuU5e-07xLZSOpfq_pLEeHx-c8Viyow_C1bbQSKNegCUzOyLdGE7T7_Hg/exec";
+
+        let currentUserId = null;
+
+        function setCurrentTime() {
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('endTime').value = `${hh}:${mm}`;
+        }
+
+        function checkStatus(userId) {
+            fetch(`${GAS_URL}?type=status&userId=${userId}`)
+                .then(res => res.json())
+                .then(status => {
+                    const msg = document.getElementById('statusMsg');
+                    msg.style.display = 'block';
+
+                    if (!status.workStartDone) {
+                        msg.textContent = "⚠️ 業務開始が未登録です。先に業務開始を入力してください。";
+                        msg.style.background = "#f8d7da";
+                        msg.style.borderColor = "#f5c6cb";
+                        return;
+                    }
+
+                    msg.textContent = "✅ 業務終了を入力してください。";
+                    msg.style.background = "#d4edda";
+                    msg.style.borderColor = "#c3e6cb";
+                    document.getElementById('submitBtn').disabled = false;
+                })
+                .catch(() => {
+                    document.getElementById('submitBtn').disabled = false;
+                });
+        }
+
+        liff.init({ liffId: LIFF_ID })
+            .then(() => {
+                if (!liff.isLoggedIn()) { liff.login(); return; }
+                return liff.getProfile();
+            })
+            .then(profile => {
+                if (!profile) return;
+                currentUserId = profile.userId;
+                document.getElementById('userInfo').textContent = `ログイン中: ${profile.displayName}`;
+                setCurrentTime();
+                checkStatus(currentUserId);
+            })
+            .catch(err => {
+                document.getElementById('userInfo').textContent = "ユーザー情報取得失敗";
+                console.error(err);
+            });
+
+        document.getElementById('workEndForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!currentUserId) { alert("ユーザー情報が取得できていません。"); return; }
+
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('loader').style.display = 'block';
+
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ type: "work_end", userId: currentUserId, data: data })
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.success) {
+                    alert('業務終了を登録しました！');
+                    liff.closeWindow();
+                } else {
+                    throw new Error(result.error || "不明なエラー");
+                }
+            })
+            .catch(err => {
+                alert("送信エラー: " + err.message);
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('loader').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
