@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日常点検フォーム</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f7f6; color: #333; }
+        section { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h3 { border-left: 5px solid #28a745; padding-left: 10px; margin-top: 0; font-size: 16px; }
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
+        label { font-size: 14px; flex: 1; padding-right: 10px; }
+        select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; background: #fff; }
+        textarea { width: 100%; height: 80px; margin-top: 10px; border-radius: 8px; border: 1px solid #ccc; padding: 10px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        button:disabled { background: #aaa; }
+        #loader { display: none; text-align: center; padding: 20px; color: #555; font-weight: bold; }
+        #userInfo { background: #e8f5e9; border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div id="userInfo">読み込み中...</div>
+    <div id="loader">送信中...</div>
+
+    <form id="inspectionForm">
+        <section>
+            <h3>1. エンジンルーム</h3>
+            <div class="item"><label>ブレーキ液の量</label><select name="f1"><option value="〇">〇</option><option value="×">×</option></select></div>
+            <div class="item"><label>冷却水の量</label><select name="f2"><option value="〇">〇</option><option value="×">×</option></select></div>
+            <div class="item"><label>エンジン・オイルの量</label><select name="f3"><option value="〇">〇</option><option value="×">×</option></select></div>
+            <div class="item"><label>バッテリ液の量</label><select name="f4"><option value="〇">〇</option><option value="×">×</option></select></div>
+            <div class="item"><label>ウォッシャ液の量</label><select name="f5"><option value="〇">〇</option><option value="×">×</option></select></div>
+        </section>
+        <section>
+            <h3>2. 車の周り</h3>
+            <div class="item"><label>ランプ類の点灯・点滅</label><select name="f6"><option value="〇">〇</option><option value="×">×</option></select></div>
+            <div class="item"><label>タイヤの亀裂や損傷</label><select name="f7"><option value="〇">〇</option><option value="×">×</option></select></div>
+            <div class="item"><label>タイヤの空気圧</label><select name="f8"><option value="〇">〇</option><option value="×">×</option></select></div>
+            <div class="item"><label>タイヤの溝の深さ</label><select name="f9"><option value="〇">〇</option><option value="×">×</option></select></div>
+        </section>
+        <section>
+            <h3>3. 運転席</h3>
+            <div class="item"><label>エンジンの始動・異音</label><select name="f10"><option value="〇">〇</option><option value="×">×</option></select></div>
+            <div class="item"><label>ウォッシャ噴射状態</label><select name="f11"><option value="〇">〇</option><option value="×">×</option></select></div>
+            <div class="item"><label>ワイパーの拭き取り</label><select name="f12"><option value="〇">〇</option><option value="×">×</option></select></div>
+            <div class="item"><label>ブレーキの踏み残り・効き</label><select name="f13"><option value="〇">〇</option><option value="×">×</option></select></div>
+            <div class="item"><label>駐車ブレーキの引きしろ</label><select name="f14"><option value="〇">〇</option><option value="×">×</option></select></div>
+            <div class="item"><label>エンジンの低速・加速</label><select name="f15"><option value="〇">〇</option><option value="×">×</option></select></div>
+        </section>
+        <textarea name="notes" placeholder="備考があれば入力"></textarea>
+        <button type="submit" id="submitBtn">点検報告を送信</button>
+    </form>
+
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+        const LIFF_ID = "2009986845-6g0rOyBc";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyUcYCeEGIKKNuU5e-07xLZSOpfq_pLEeHx-c8Viyow_C1bbQSKNegCUzOyLdGE7T7_Hg/exec";
+
+        let currentUserId = null;
+
+        // LIFF初期化
+        liff.init({ liffId: LIFF_ID })
+            .then(() => {
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+                return liff.getProfile();
+            })
+            .then(profile => {
+                if (!profile) return;
+                currentUserId = profile.userId;
+                document.getElementById('userInfo').textContent = `ログイン中: ${profile.displayName}`;
+            })
+            .catch(err => {
+                document.getElementById('userInfo').textContent = "ユーザー情報取得失敗";
+                console.error("LIFF init error:", err);
+            });
+
+        // フォーム送信
+        document.getElementById('inspectionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (!currentUserId) {
+                alert("ユーザー情報が取得できていません。再読み込みしてください。");
+                return;
+            }
+
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('loader').style.display = 'block';
+
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    type: "inspection",
+                    userId: currentUserId,
+                    data: data
+                })
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.success) {
+                    alert('点検報告を送信しました！');
+                    liff.closeWindow();
+                } else {
+                    throw new Error(result.error || "不明なエラー");
+                }
+            })
+            .catch(err => {
+                alert("送信エラー: " + err.message);
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('loader').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
