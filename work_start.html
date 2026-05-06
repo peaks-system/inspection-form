@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>業務開始</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f0f4ff; color: #333; }
+        section { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h3 { border-left: 5px solid #4a90d9; padding-left: 10px; margin-top: 0; font-size: 16px; }
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
+        .item:last-child { border-bottom: none; }
+        label { font-size: 14px; flex: 1; padding-right: 10px; }
+        select, input[type="text"], input[type="number"], input[type="time"] {
+            padding: 8px; border-radius: 4px; border: 1px solid #ccc; background: #fff; font-size: 14px;
+        }
+        textarea { width: 100%; height: 70px; margin-top: 10px; border-radius: 4px; border: 1px solid #ccc; padding: 10px; box-sizing: border-box; font-size: 14px; }
+        button { width: 100%; padding: 15px; background: #4a90d9; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        button:disabled { background: #aaa; }
+        #statusMsg { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 15px; margin-bottom: 15px; font-size: 14px; display: none; }
+        #loader { display: none; text-align: center; padding: 15px; color: #555; }
+        #userInfo { background: #e8f0fe; border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div id="userInfo">読み込み中...</div>
+    <div id="statusMsg"></div>
+    <div id="loader">送信中...</div>
+
+    <form id="workStartForm">
+        <section>
+            <h3>アルコールチェック</h3>
+            <div class="item">
+                <label>検査結果</label>
+                <select name="alcCheck">
+                    <option value="〇">〇 異常なし</option>
+                    <option value="×">× 要確認</option>
+                </select>
+            </div>
+        </section>
+        <section>
+            <h3>業務開始情報</h3>
+            <div class="item">
+                <label>開始時刻</label>
+                <input type="time" name="startTime" id="startTime">
+            </div>
+            <div class="item">
+                <label>開始メーター（km）</label>
+                <input type="number" name="meterStart" placeholder="例：12345">
+            </div>
+        </section>
+        <section>
+            <h3>備考</h3>
+            <textarea name="notes" placeholder="任意入力"></textarea>
+        </section>
+        <button type="submit" id="submitBtn" disabled>業務開始を送信</button>
+    </form>
+
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+        const LIFF_ID = "2009986845-6g0rOyBc"; // ★LIFFアプリが別なら変更
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyUcYCeEGIKKNuU5e-07xLZSOpfq_pLEeHx-c8Viyow_C1bbQSKNegCUzOyLdGE7T7_Hg/exec";
+
+        let currentUserId = null;
+
+        // 現在時刻をtime inputにセット
+        function setCurrentTime() {
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('startTime').value = `${hh}:${mm}`;
+        }
+
+        // ステータス確認してボタン制御
+        function checkStatus(userId) {
+            fetch(`${GAS_URL}?type=status&userId=${userId}`)
+                .then(res => res.json())
+                .then(status => {
+                    const msg = document.getElementById('statusMsg');
+                    msg.style.display = 'block';
+
+                    if (!status.inspectionDone) {
+                        msg.textContent = "⚠️ 本日の日常点検が未完了です。先に点検を行ってください。";
+                        msg.style.background = "#f8d7da";
+                        msg.style.borderColor = "#f5c6cb";
+                        return;
+                    }
+                    if (status.workStartDone) {
+                        msg.textContent = "✅ 本日の業務開始は登録済みです。";
+                        msg.style.background = "#d4edda";
+                        msg.style.borderColor = "#c3e6cb";
+                        return;
+                    }
+
+                    msg.textContent = "✅ 点検完了済み。業務開始を入力してください。";
+                    msg.style.background = "#d4edda";
+                    msg.style.borderColor = "#c3e6cb";
+                    document.getElementById('submitBtn').disabled = false;
+                })
+                .catch(() => {
+                    // ステータス確認失敗時はとりあえず入力可能にする
+                    document.getElementById('submitBtn').disabled = false;
+                });
+        }
+
+        // LIFF初期化
+        liff.init({ liffId: LIFF_ID })
+            .then(() => {
+                if (!liff.isLoggedIn()) { liff.login(); return; }
+                return liff.getProfile();
+            })
+            .then(profile => {
+                if (!profile) return;
+                currentUserId = profile.userId;
+                document.getElementById('userInfo').textContent = `ログイン中: ${profile.displayName}`;
+                setCurrentTime();
+                checkStatus(currentUserId);
+            })
+            .catch(err => {
+                document.getElementById('userInfo').textContent = "ユーザー情報取得失敗";
+                console.error(err);
+            });
+
+        // フォーム送信
+        document.getElementById('workStartForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!currentUserId) { alert("ユーザー情報が取得できていません。"); return; }
+
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('loader').style.display = 'block';
+
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ type: "work_start", userId: currentUserId, data: data })
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.success) {
+                    alert('業務開始を登録しました！');
+                    liff.closeWindow();
+                } else {
+                    throw new Error(result.error || "不明なエラー");
+                }
+            })
+            .catch(err => {
+                alert("送信エラー: " + err.message);
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('loader').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
