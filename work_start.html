@@ -116,29 +116,32 @@
 
         // 修正ボタン：当日データを取得してフォームに反映
         document.getElementById('editBtn').addEventListener('click', function() {
-            fetch(GAS_URL, {
-                method: 'POST',
-                body: JSON.stringify({ type: "get_today", userId: currentUserId, dataType: "work_start" })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (!data.success) { alert("データの取得に失敗しました。"); return; }
-                document.getElementById('startTime').value = data.startTime || '';
-                document.querySelector('[name="meterStart"]').value = data.meterStart || '';
-                document.querySelector('[name="notes"]').value = data.notes || '';
-                const alcSelect = document.querySelector('[name="alcCheck"]');
-                if (data.alcCheck) alcSelect.value = data.alcCheck;
-                document.getElementById('editRow').value = data.row;
-
-                // ボタン切り替え
-                document.getElementById('editBtn').style.display = 'none';
-                document.getElementById('submitBtn').style.display = 'block';
-                document.getElementById('submitBtn').disabled = false;
-                document.getElementById('submitBtn').textContent = '修正内容を保存';
-                document.getElementById('statusMsg').style.display = 'none';
-            })
-            .catch(() => alert("データ取得エラーが発生しました。"));
-        });
+    fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ type: "get_today", userId: currentUserId, dataType: "work_start" })
+    })
+    .then(res => {
+        alert("HTTPステータス: " + res.status);
+        return res.text();
+    })
+    .then(text => {
+        alert("レスポンス: " + text.substring(0, 200));
+        const data = JSON.parse(text);
+        if (!data.success) { alert("データの取得に失敗しました。"); return; }
+        document.getElementById('startTime').value = data.startTime || '';
+        document.querySelector('[name="meterStart"]').value = data.meterStart || '';
+        document.querySelector('[name="notes"]').value = data.notes || '';
+        const alcSelect = document.querySelector('[name="alcCheck"]');
+        if (data.alcCheck) alcSelect.value = data.alcCheck;
+        document.getElementById('editRow').value = data.row;
+        document.getElementById('editBtn').style.display = 'none';
+        document.getElementById('submitBtn').style.display = 'block';
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtn').textContent = '修正内容を保存';
+        document.getElementById('statusMsg').style.display = 'none';
+    })
+    .catch(err => alert("エラー詳細: " + err.toString()));
+});
 
         liff.init({ liffId: LIFF_ID })
             .then(() => {
