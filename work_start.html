@@ -17,14 +17,17 @@
         textarea { width: 100%; height: 70px; margin-top: 10px; border-radius: 4px; border: 1px solid #ccc; padding: 10px; box-sizing: border-box; font-size: 14px; }
         button { width: 100%; padding: 15px; background: #4a90d9; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         button:disabled { background: #aaa; }
-        #statusMsg { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 15px; margin-bottom: 15px; font-size: 14px; display: none; }
+        #editBtn { background: white; color: #4a90d9; border: 2px solid #4a90d9; display: none; }
+        #statusMsg { border-radius: 8px; padding: 12px 15px; margin-bottom: 15px; font-size: 14px; display: none; }
         #loader { display: none; text-align: center; padding: 15px; color: #555; }
         #userInfo { background: #e8f0fe; border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; font-size: 14px; }
+        #successMsg { background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 15px; margin-bottom: 15px; font-size: 14px; display: none; text-align: center; }
     </style>
 </head>
 <body>
     <div id="userInfo">読み込み中...</div>
     <div id="statusMsg"></div>
+    <div id="successMsg">✅ 業務開始を登録しました</div>
     <div id="loader">送信中...</div>
 
     <form id="workStartForm">
@@ -53,17 +56,18 @@
             <h3>備考</h3>
             <textarea name="notes" placeholder="任意入力"></textarea>
         </section>
+        <input type="hidden" name="editRow" id="editRow" value="">
         <button type="submit" id="submitBtn" disabled>業務開始を送信</button>
+        <button type="button" id="editBtn">✏️ 内容を修正する</button>
     </form>
 
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
-        const LIFF_ID = "2009986845-ylW7GCS1"; // ★LIFFアプリが別なら変更
+        const LIFF_ID = "2009986845-ylW7GCS1";
         const GAS_URL = "https://script.google.com/macros/s/AKfycbydRe43zHCN_JgxMyoEjbo4wsZLDebKywB3hlUn_K9AIuSYvz6hdFUb--KISYAHswke/exec";
 
         let currentUserId = null;
 
-        // 現在時刻をtime inputにセット
         function setCurrentTime() {
             const now = new Date();
             const hh = String(now.getHours()).padStart(2, '0');
@@ -71,47 +75,71 @@
             document.getElementById('startTime').value = `${hh}:${mm}`;
         }
 
-        // ステータス確認してボタン制御
+        function showStatus(msg, type) {
+            const el = document.getElementById('statusMsg');
+            el.style.display = 'block';
+            el.textContent = msg;
+            if (type === 'error') {
+                el.style.background = "#f8d7da";
+                el.style.border = "1px solid #f5c6cb";
+            } else {
+                el.style.background = "#d4edda";
+                el.style.border = "1px solid #c3e6cb";
+            }
+        }
+
         function checkStatus(userId) {
-    fetch(GAS_URL, {
-        method: 'POST',
-        body: JSON.stringify({ type: "status", userId: userId })
-    })
-    .then(res => res.json())
-    .then(status => {
-        const msg = document.getElementById('statusMsg');
-        msg.style.display = 'block';
-
-        if (!status.inspectionDone) {
-            msg.textContent = "⚠️ 本日の日常点検が未完了です。先に点検を行ってください。";
-            msg.style.background = "#f8d7da";
-            msg.style.borderColor = "#f5c6cb";
-            return;
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ type: "status", userId: userId })
+            })
+            .then(res => res.json())
+            .then(status => {
+                if (!status.inspectionDone) {
+                    showStatus("⚠️ 本日の日常点検が未完了です。先に点検を行ってください。", 'error');
+                    return;
+                }
+                if (status.workStartDone) {
+                    // 登録済み→修正ボタンを表示
+                    showStatus("✅ 本日の業務開始は登録済みです。", 'ok');
+                    document.getElementById('submitBtn').style.display = 'none';
+                    document.getElementById('editBtn').style.display = 'block';
+                    return;
+                }
+                showStatus("✅ 点検完了済み。業務開始を入力してください。", 'ok');
+                document.getElementById('submitBtn').disabled = false;
+            })
+            .catch(() => {
+                document.getElementById('submitBtn').disabled = false;
+            });
         }
-        if (status.workStartDone) {
-            msg.textContent = "✅ 本日の業務開始は登録済みです。";
-            msg.style.background = "#d4edda";
-            msg.style.borderColor = "#c3e6cb";
-            return;
-        }
 
-        msg.textContent = "✅ 点検完了済み。業務開始を入力してください。";
-        msg.style.background = "#d4edda";
-        msg.style.borderColor = "#c3e6cb";
-        document.getElementById('submitBtn').disabled = false;
-    })
-    .catch(err => {
-        console.error("ステータス確認エラー:", err);
-        document.getElementById('submitBtn').disabled = false;
-        const msg = document.getElementById('statusMsg');
-        msg.style.display = 'block';
-        msg.textContent = "ステータス確認をスキップ。入力してください。";
-        msg.style.background = "#fff3cd";
-        msg.style.borderColor = "#ffc107";
-    });
-}
+        // 修正ボタン：当日データを取得してフォームに反映
+        document.getElementById('editBtn').addEventListener('click', function() {
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ type: "get_today", userId: currentUserId, dataType: "work_start" })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) { alert("データの取得に失敗しました。"); return; }
+                document.getElementById('startTime').value = data.startTime || '';
+                document.querySelector('[name="meterStart"]').value = data.meterStart || '';
+                document.querySelector('[name="notes"]').value = data.notes || '';
+                const alcSelect = document.querySelector('[name="alcCheck"]');
+                if (data.alcCheck) alcSelect.value = data.alcCheck;
+                document.getElementById('editRow').value = data.row;
 
-        // LIFF初期化
+                // ボタン切り替え
+                document.getElementById('editBtn').style.display = 'none';
+                document.getElementById('submitBtn').style.display = 'block';
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').textContent = '修正内容を保存';
+                document.getElementById('statusMsg').style.display = 'none';
+            })
+            .catch(() => alert("データ取得エラーが発生しました。"));
+        });
+
         liff.init({ liffId: LIFF_ID })
             .then(() => {
                 if (!liff.isLoggedIn()) { liff.login(); return; }
@@ -129,7 +157,6 @@
                 console.error(err);
             });
 
-        // フォーム送信
         document.getElementById('workStartForm').addEventListener('submit', function(e) {
             e.preventDefault();
             if (!currentUserId) { alert("ユーザー情報が取得できていません。"); return; }
@@ -147,8 +174,14 @@
             .then(res => res.json())
             .then(result => {
                 if (result.success) {
-                    alert('業務開始を登録しました！');
-                    liff.closeWindow();
+                    document.getElementById('workStartForm').style.display = 'none';
+                    document.getElementById('successMsg').style.display = 'block';
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('statusMsg').style.display = 'none';
+                    // 修正ボタンを表示
+                    document.getElementById('editBtn').style.display = 'block';
+                    document.getElementById('workStartForm').style.display = 'none';
+                    setTimeout(() => liff.closeWindow(), 1500);
                 } else {
                     throw new Error(result.error || "不明なエラー");
                 }
