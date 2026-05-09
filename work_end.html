@@ -17,7 +17,8 @@
         textarea { width: 100%; height: 70px; margin-top: 10px; border-radius: 4px; border: 1px solid #ccc; padding: 10px; box-sizing: border-box; font-size: 14px; }
         button { width: 100%; padding: 15px; background: #e05c2a; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         button:disabled { background: #aaa; }
-        #statusMsg { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 15px; margin-bottom: 15px; font-size: 14px; display: none; }
+        #editBtn { background: white; color: #e05c2a; border: 2px solid #e05c2a; display: none; }
+        #statusMsg { border-radius: 8px; padding: 12px 15px; margin-bottom: 15px; font-size: 14px; display: none; }
         #loader { display: none; text-align: center; padding: 15px; color: #555; }
         #userInfo { background: #fce8e0; border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; font-size: 14px; }
     </style>
@@ -47,13 +48,15 @@
             <h3>備考</h3>
             <textarea name="notes" placeholder="任意入力"></textarea>
         </section>
+        <input type="hidden" name="editRow" id="editRow" value="">
         <button type="submit" id="submitBtn" disabled>業務終了を送信</button>
+        <button type="button" id="editBtn">✏️ 内容を修正する</button>
     </form>
 
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
-        const LIFF_ID = "2009986845-re7HgYzi"; // ★LIFFアプリが別なら変更
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxdr8Uqh-RbPE8p9fs40yahSla0jcLmyfZmKvZ-dFDs3mNkx5ZXN16Tp7DFkjXJ4BhXYA/exec";
+        const LIFF_ID = "2009986845-re7HgYzi";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxdr8Uqh-RbPE8p9fs40yahSla0jcLmyfZmKvZ-dFDs3mNkx5ZXN16Tp7DFkjXJ48hXYA/exec";
 
         let currentUserId = null;
 
@@ -64,32 +67,68 @@
             document.getElementById('endTime').value = `${hh}:${mm}`;
         }
 
-        function checkStatus(userId) {
-    fetch(GAS_URL, {
-        method: 'POST',
-        body: JSON.stringify({ type: "status", userId: userId })
-    })
-                .then(res => res.json())
-                .then(status => {
-                    const msg = document.getElementById('statusMsg');
-                    msg.style.display = 'block';
-
-                    if (!status.workStartDone) {
-                        msg.textContent = "⚠️ 業務開始が未登録です。先に業務開始を入力してください。";
-                        msg.style.background = "#f8d7da";
-                        msg.style.borderColor = "#f5c6cb";
-                        return;
-                    }
-
-                    msg.textContent = "✅ 業務終了を入力してください。";
-                    msg.style.background = "#d4edda";
-                    msg.style.borderColor = "#c3e6cb";
-                    document.getElementById('submitBtn').disabled = false;
-                })
-                .catch(() => {
-                    document.getElementById('submitBtn').disabled = false;
-                });
+        function showStatus(msg, type) {
+            const el = document.getElementById('statusMsg');
+            el.style.display = 'block';
+            el.textContent = msg;
+            if (type === 'error') {
+                el.style.background = "#f8d7da";
+                el.style.border = "1px solid #f5c6cb";
+            } else {
+                el.style.background = "#d4edda";
+                el.style.border = "1px solid #c3e6cb";
+            }
         }
+
+        function checkStatus(userId) {
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ type: "status", userId: userId })
+            })
+            .then(res => res.json())
+            .then(status => {
+                if (!status.workStartDone) {
+                    showStatus("⚠️ 業務開始が未登録です。先に業務開始を入力してください。", 'error');
+                    return;
+                }
+                if (status.workEndDone) {
+                    // 終了済み→修正ボタンを表示
+                    showStatus("✅ 本日の業務終了は登録済みです。", 'ok');
+                    document.getElementById('submitBtn').style.display = 'none';
+                    document.getElementById('editBtn').style.display = 'block';
+                    return;
+                }
+                showStatus("✅ 業務終了を入力してください。", 'ok');
+                document.getElementById('submitBtn').disabled = false;
+            })
+            .catch(() => {
+                document.getElementById('submitBtn').disabled = false;
+            });
+        }
+
+        // 修正ボタン：当日データを取得してフォームに反映
+        document.getElementById('editBtn').addEventListener('click', function() {
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ type: "get_today", userId: currentUserId, dataType: "work_end" })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) { alert("データの取得に失敗しました。"); return; }
+                document.getElementById('endTime').value = data.endTime || '';
+                document.querySelector('[name="meterEnd"]').value = data.meterEnd || '';
+                document.querySelector('[name="deliveryCount"]').value = data.deliveryCount || '';
+                document.querySelector('[name="notes"]').value = data.notes || '';
+                document.getElementById('editRow').value = data.row;
+
+                document.getElementById('editBtn').style.display = 'none';
+                document.getElementById('submitBtn').style.display = 'block';
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').textContent = '修正内容を保存';
+                document.getElementById('statusMsg').style.display = 'none';
+            })
+            .catch(() => alert("データ取得エラーが発生しました。"));
+        });
 
         liff.init({ liffId: LIFF_ID })
             .then(() => {
@@ -125,8 +164,11 @@
             .then(res => res.json())
             .then(result => {
                 if (result.success) {
-                    alert('業務終了を登録しました！');
-                    liff.closeWindow();
+                    showStatus("✅ 業務終了を登録しました。", 'ok');
+                    document.getElementById('workEndForm').style.display = 'none';
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('editBtn').style.display = 'block';
+                    setTimeout(() => liff.closeWindow(), 1500);
                 } else {
                     throw new Error(result.error || "不明なエラー");
                 }
