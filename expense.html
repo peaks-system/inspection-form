@@ -12,35 +12,183 @@
         .item:last-child { border-bottom: none; }
         label { font-size: 14px; flex: 1; padding-right: 10px; }
         select, input[type="number"] { padding: 8px; border-radius: 4px; border: 1px solid #ccc; background: #fff; font-size: 14px; }
-        textarea { width: 100%; height: 70px; margin-top: 10px; border-radius: 4px; border: 1px solid #ccc; padding: 10px; box-sizing: border-box; font-size: 14px; }
+        textarea { width: 100%; height: 60px; margin-top: 8px; border-radius: 4px; border: 1px solid #ccc; padding: 10px; box-sizing: border-box; font-size: 14px; }
         .delete-btn { position: absolute; top: 12px; right: 12px; background: #eee; border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 16px; cursor: pointer; color: #999; line-height: 28px; text-align: center; padding: 0; }
-        .delete-btn:hover { background: #f8d7da; color: #d9534f; }
         #addBtn { width: 100%; padding: 12px; background: white; color: #7b52d3; border: 2px dashed #7b52d3; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
         #submitBtn { width: 100%; padding: 15px; background: #7b52d3; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 5px; }
         #submitBtn:disabled { background: #aaa; }
         #loader { display: none; text-align: center; padding: 15px; color: #555; }
         #userInfo { background: #ede8ff; border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; font-size: 14px; }
         #expenseList { margin-bottom: 5px; }
+
+        /* 登録済み一覧 */
+        #savedSection { background: white; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; }
+        #savedSection h3 { border-left: 5px solid #7b52d3; padding: 15px 15px 0; margin: 0 0 10px; font-size: 16px; }
+        .saved-item { padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .saved-item:last-child { border-bottom: none; }
+        .saved-info { flex: 1; font-size: 14px; }
+        .saved-info .amount { font-weight: bold; font-size: 16px; color: #7b52d3; }
+        .saved-info .meta { color: #888; font-size: 12px; margin-top: 2px; }
+        .saved-actions { display: flex; gap: 8px; }
+        .edit-saved-btn { padding: 6px 12px; background: #e8f0fe; color: #4a90d9; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; }
+        .del-saved-btn { padding: 6px 12px; background: #fde8e8; color: #d9534f; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; }
+
+        /* 編集モーダル */
+        #editModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; }
+        #editModalInner { background: white; margin: 60px 20px; border-radius: 12px; padding: 20px; }
+        #editModal h3 { margin-top: 0; font-size: 16px; border-left: 5px solid #7b52d3; padding-left: 10px; }
+        #editModal select, #editModal input { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; margin-bottom: 10px; }
+        #editModal textarea { width: 100%; height: 60px; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; margin-bottom: 10px; }
+        .modal-btns { display: flex; gap: 10px; }
+        .modal-btns button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        #modalSaveBtn { background: #7b52d3; color: white; }
+        #modalCancelBtn { background: #eee; color: #555; }
     </style>
 </head>
 <body>
     <div id="userInfo">読み込み中...</div>
-    <div id="loader">送信中...</div>
+    <div id="loader">処理中...</div>
 
+    <!-- 登録済み経費一覧 -->
+    <div id="savedSection" style="display:none;">
+        <h3>📋 本日の登録済み経費</h3>
+        <div id="savedList"></div>
+    </div>
+
+    <!-- 新規追加フォーム -->
     <form id="expenseForm">
         <div id="expenseList"></div>
         <button type="button" id="addBtn">＋ 経費を追加</button>
         <button type="submit" id="submitBtn">経費を報告する</button>
     </form>
 
+    <!-- 編集モーダル -->
+    <div id="editModal">
+        <div id="editModalInner">
+            <h3>✏️ 経費を修正</h3>
+            <select id="modalCategory">
+                <option value="駐車">駐車</option>
+                <option value="高速">高速</option>
+                <option value="その他">その他</option>
+            </select>
+            <input type="number" id="modalAmount" placeholder="金額（円）">
+            <textarea id="modalComment" placeholder="コメント（任意）"></textarea>
+            <div class="modal-btns">
+                <button type="button" id="modalCancelBtn">キャンセル</button>
+                <button type="button" id="modalSaveBtn">保存</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
         const LIFF_ID = "2009986845-M4uWlVuX";
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxdr8Uqh-RbPE8p9fs40yahSla0jcLmyfZmKvZ-dFDs3mNkx5ZXN16Tp7DFkjXJ4BhXYA/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxdr8Uqh-RbPE8p9fs40yahSla0jcLmyfZmKvZ-dFDs3mNkx5ZXN16Tp7DFkjXJ48hXYA/exec";
 
         let currentUserId = null;
         let blockCount = 0;
+        let editingRow = null;
 
+        // 登録済み経費を読み込んで表示
+        function loadSavedExpenses() {
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ type: "expense_list", userId: currentUserId })
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (!result.success || result.expenses.length === 0) {
+                    document.getElementById('savedSection').style.display = 'none';
+                    return;
+                }
+                document.getElementById('savedSection').style.display = 'block';
+                const list = document.getElementById('savedList');
+                list.innerHTML = '';
+                result.expenses.forEach(exp => {
+                    const div = document.createElement('div');
+                    div.className = 'saved-item';
+                    div.innerHTML = `
+                        <div class="saved-info">
+                            <div class="amount">¥${Number(exp.amount).toLocaleString()}</div>
+                            <div class="meta">${exp.category}${exp.comment ? '　' + exp.comment : ''}</div>
+                        </div>
+                        <div class="saved-actions">
+                            <button class="edit-saved-btn" onclick="openEditModal(${exp.row}, '${exp.category}', ${exp.amount}, '${exp.comment || ''}')">✏️</button>
+                            <button class="del-saved-btn" onclick="deleteSaved(${exp.row}, this)">🗑️</button>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+            })
+            .catch(() => {});
+        }
+
+        // 削除
+        function deleteSaved(row, btn) {
+            if (!confirm('この経費を削除しますか？')) return;
+            btn.disabled = true;
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ type: "expense_delete", userId: currentUserId, row: row })
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.success) {
+                    loadSavedExpenses();
+                } else {
+                    alert("削除に失敗しました: " + (result.error || ""));
+                    btn.disabled = false;
+                }
+            })
+            .catch(() => { alert("通信エラーが発生しました。"); btn.disabled = false; });
+        }
+
+        // 編集モーダルを開く
+        function openEditModal(row, category, amount, comment) {
+            editingRow = row;
+            document.getElementById('modalCategory').value = category;
+            document.getElementById('modalAmount').value = amount;
+            document.getElementById('modalComment').value = comment;
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        document.getElementById('modalCancelBtn').addEventListener('click', function() {
+            document.getElementById('editModal').style.display = 'none';
+            editingRow = null;
+        });
+
+        document.getElementById('modalSaveBtn').addEventListener('click', function() {
+            if (!editingRow) return;
+            const data = {
+                amount: document.getElementById('modalAmount').value,
+                category: document.getElementById('modalCategory').value,
+                comment: document.getElementById('modalComment').value
+            };
+            if (!data.amount) { alert("金額を入力してください。"); return; }
+
+            document.getElementById('modalSaveBtn').disabled = true;
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ type: "expense_update", row: editingRow, data: data })
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.success) {
+                    document.getElementById('editModal').style.display = 'none';
+                    editingRow = null;
+                    loadSavedExpenses();
+                } else {
+                    alert("更新に失敗しました。");
+                }
+                document.getElementById('modalSaveBtn').disabled = false;
+            })
+            .catch(() => {
+                alert("通信エラーが発生しました。");
+                document.getElementById('modalSaveBtn').disabled = false;
+            });
+        });
+
+        // 新規追加ブロック
         function addExpenseBlock() {
             blockCount++;
             const index = blockCount;
@@ -64,7 +212,7 @@
                 </div>
                 <div class="item" style="display:block; padding-top:12px;">
                     <label>コメント（任意）</label>
-                    <textarea name="comment_${index}" placeholder="任意入力" style="margin-top:8px;"></textarea>
+                    <textarea name="comment_${index}" placeholder="任意入力"></textarea>
                 </div>
             `;
             document.getElementById('expenseList').appendChild(block);
@@ -76,10 +224,9 @@
         }
 
         document.getElementById('addBtn').addEventListener('click', addExpenseBlock);
-
-        // 初期表示で1件追加
         addExpenseBlock();
 
+        // LIFF初期化
         liff.init({ liffId: LIFF_ID })
             .then(() => {
                 if (!liff.isLoggedIn()) { liff.login(); return; }
@@ -89,17 +236,18 @@
                 if (!profile) return;
                 currentUserId = profile.userId;
                 document.getElementById('userInfo').textContent = `ログイン中: ${profile.displayName}`;
+                loadSavedExpenses();
             })
             .catch(err => {
                 document.getElementById('userInfo').textContent = "ユーザー情報取得失敗";
                 console.error(err);
             });
 
+        // 新規送信
         document.getElementById('expenseForm').addEventListener('submit', function(e) {
             e.preventDefault();
             if (!currentUserId) { alert("ユーザー情報が取得できていません。"); return; }
 
-            // 入力されている経費ブロックを収集
             const blocks = document.querySelectorAll('.expense-block');
             const expenses = [];
             blocks.forEach(block => {
@@ -107,20 +255,14 @@
                 const amount = block.querySelector(`[name="amount_${idx}"]`).value;
                 const category = block.querySelector(`[name="category_${idx}"]`).value;
                 const comment = block.querySelector(`[name="comment_${idx}"]`).value;
-                if (amount) {
-                    expenses.push({ amount, category, comment });
-                }
+                if (amount) expenses.push({ amount, category, comment });
             });
 
-            if (expenses.length === 0) {
-                alert("金額を入力してください。");
-                return;
-            }
+            if (expenses.length === 0) { alert("金額を入力してください。"); return; }
 
             document.getElementById('submitBtn').disabled = true;
             document.getElementById('loader').style.display = 'block';
 
-            // 複数件を順番に送信
             Promise.all(expenses.map(item =>
                 fetch(GAS_URL, {
                     method: 'POST',
@@ -130,14 +272,20 @@
             .then(results => {
                 const allSuccess = results.every(r => r.success);
                 if (allSuccess) {
+                    // フォームをリセットして一覧を再読み込み
+                    document.getElementById('expenseList').innerHTML = '';
+                    blockCount = 0;
+                    addExpenseBlock();
+                    loadSavedExpenses();
                     alert(`${expenses.length}件の経費を報告しました！`);
-                    liff.closeWindow();
                 } else {
                     throw new Error("一部の送信に失敗しました");
                 }
             })
             .catch(err => {
                 alert("送信エラー: " + err.message);
+            })
+            .finally(() => {
                 document.getElementById('submitBtn').disabled = false;
                 document.getElementById('loader').style.display = 'none';
             });
