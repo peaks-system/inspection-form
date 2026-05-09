@@ -64,7 +64,7 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
         const LIFF_ID = "2009986845-ylW7GCS1";
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwZMidD_41vWZpqw34_XWM5T3LOC7PrD_caMjBDF87taW34c8I-B0tS70-8DPY0zz6UXg/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbz-_n69EmDpW6MjYr-PEIz2_Ar5z9kjTGbm-6wsKWMKRDC_i0wGbe7UD7uGPRrVxjAPug/exec";
 
         let currentUserId = null;
 
@@ -116,32 +116,29 @@
 
         // 修正ボタン：当日データを取得してフォームに反映
         document.getElementById('editBtn').addEventListener('click', function() {
-    fetch(GAS_URL, {
-        method: 'POST',
-        body: JSON.stringify({ type: "get_today", userId: currentUserId, dataType: "work_start" })
-    })
-    .then(res => {
-        alert("HTTPステータス: " + res.status);
-        return res.text();
-    })
-    .then(text => {
-        alert("レスポンス: " + text.substring(0, 200));
-        const data = JSON.parse(text);
-        if (!data.success) { alert("データの取得に失敗しました。"); return; }
-        document.getElementById('startTime').value = data.startTime || '';
-        document.querySelector('[name="meterStart"]').value = data.meterStart || '';
-        document.querySelector('[name="notes"]').value = data.notes || '';
-        const alcSelect = document.querySelector('[name="alcCheck"]');
-        if (data.alcCheck) alcSelect.value = data.alcCheck;
-        document.getElementById('editRow').value = data.row;
-        document.getElementById('editBtn').style.display = 'none';
-        document.getElementById('submitBtn').style.display = 'block';
-        document.getElementById('submitBtn').disabled = false;
-        document.getElementById('submitBtn').textContent = '修正内容を保存';
-        document.getElementById('statusMsg').style.display = 'none';
-    })
-    .catch(err => alert("エラー詳細: " + err.toString()));
-});
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ type: "get_today", userId: currentUserId, dataType: "work_start" })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) { alert("データの取得に失敗しました。"); return; }
+                document.getElementById('startTime').value = data.startTime || '';
+                document.querySelector('[name="meterStart"]').value = data.meterStart || '';
+                document.querySelector('[name="notes"]').value = data.notes || '';
+                const alcSelect = document.querySelector('[name="alcCheck"]');
+                if (data.alcCheck) alcSelect.value = data.alcCheck;
+                document.getElementById('editRow').value = data.row;
+
+                // ボタン切り替え
+                document.getElementById('editBtn').style.display = 'none';
+                document.getElementById('submitBtn').style.display = 'block';
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').textContent = '修正内容を保存';
+                document.getElementById('statusMsg').style.display = 'none';
+            })
+            .catch(() => alert("データ取得エラーが発生しました。"));
+        });
 
         liff.init({ liffId: LIFF_ID })
             .then(() => {
