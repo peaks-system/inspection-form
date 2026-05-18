@@ -80,8 +80,8 @@
             fetch(gasUrl, {
                 method: "POST",
                 body: JSON.stringify({
-                    action: "createReportPdf",
-                    userId: profile.userId,
+    type: "create_report",
+    userId: profile.userId,
                     month: targetMonth
                 })
             })
