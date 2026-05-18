@@ -1,126 +1,131 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>稼働報告書作成</title>
-    <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f7f6; color: #333; }
-        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto; }
-        h2 { font-size: 18px; color: #007bff; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-top: 0; }
-        label { display: block; margin: 15px 0 5px; font-weight: bold; font-size: 14px; }
-        select, button { width: 100%; padding: 12px; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
-        select { border: 1px solid #ccc; background: #fff; margin-bottom: 20px; }
-        
-        /* ボタンの基本デザイン */
-        .btn-submit { background: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
-        .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
-        
-        /* 完了後に表示される共有ボタンエリア */
-        .result-area { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px dashed #ccc; }
-        .btn-share { background: #28a745; color: white; border: none; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
-        .btn-open { background: #6c757d; color: white; border: none; font-weight: bold; text-align: center; text-decoration: none; display: block; line-height: 20px; }
-        
-        .loading { display: none; text-align: center; color: #ffc107; font-weight: bold; margin: 15px 0; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>稼働報告書作成</title>
+<style>
+body { font-family: sans-serif; padding: 20px; background: #f4f7f6; color: #333; }
+.container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto; }
+h2 { font-size: 18px; color: #007bff; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-top: 0; }
+label { display: block; margin: 15px 0 5px; font-weight: bold; font-size: 14px; }
+select, button { width: 100%; padding: 12px; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
+select { border: 1px solid #ccc; background: #fff; margin-bottom: 20px; }
+.btn-submit { background: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
+.btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+.result-area { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px dashed #ccc; }
+.btn-share { background: #28a745; color: white; border: none; font-weight: bold; margin-bottom: 10px; cursor: pointer; width: 100%; padding: 12px; border-radius: 6px; font-size: 16px; }
+.btn-open { background: #6c757d; color: white; border: none; font-weight: bold; text-align: center; text-decoration: none; display: block; padding: 12px; border-radius: 6px; font-size: 16px; line-height: 20px; }
+.loading { display: none; text-align: center; color: #ffc107; font-weight: bold; margin: 15px 0; }
+</style>
 </head>
 <body>
-
 <div class="container">
-    <h2>稼働報告書（PDF）の発行</h2>
-    
-    <div id="loader" class="loading">PDFを作成中。しばらくお待ちください...</div>
-    
-    <form id="reportForm">
-        <label for="monthSelect">作成する月を選択</label>
-        <select id="monthSelect" name="month">
-            <option value="4">4月度</option>
-            <option value="5" selected>5月度</option>
-            <option value="6">6月度</option>
-        </select>
-        
-        <button type="submit" id="submitBtn" class="btn-submit">PDFを作成する</button>
-    </form>
+  <h2>稼働報告書（PDF）の発行</h2>
+  <div id="loader" class="loading">PDFを作成中。しばらくお待ちください...</div>
 
-    <div id="resultArea" class="result-area">
-        <button id="shareBtn" class="btn-share">LINE・メールで共有する</button>
-        <a id="pdfLink" class="btn-open" target="_blank">PDFを直接開く</a>
-    </div>
+  <form id="reportForm">
+    <label for="monthSelect">作成する月を選択</label>
+    <select id="monthSelect" name="month">
+      <!-- 動的に生成 -->
+    </select>
+    <button type="submit" id="submitBtn" class="btn-submit">PDFを作成する</button>
+  </form>
+
+  <div id="resultArea" class="result-area">
+    <button id="shareBtn" class="btn-share">LINE・メールで共有する</button>
+    <a id="pdfLink" class="btn-open" target="_blank">PDFを直接開く</a>
+  </div>
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
-    // あなたの既存のLIFF ID
-    const liffId = "2009986845-6g0rOyBc";
-    // あなたのGASのウェブアプリURL（末尾が /exec のもの）をここに貼り付けてください
-    const gasUrl = "https://script.google.com/macros/s/AKfycbxdr8Uqh-RbPE8p9fs40yahSla0jcLmyfZmKvZ-dFDs3mNkx5ZXN16Tp7DFkjXJ4BhXYA/exec"; 
+const liffId = "2009986845-6g0rOyBc";
+const gasUrl = "https://script.google.com/macros/s/AKfycbxdr8Uqh-RbPE8p9fs40yahSla0jcLmyfZmKvZ-dFDs3mNkx5ZXN16Tp7DFkjXJ4BhXYA/exec";
 
-    let generatedPdfUrl = "";
+let generatedPdfUrl = "";
 
-    // 画面が開いたら自動でLINEにログインする
-    liff.init({ liffId: liffId }).then(() => {
-        if (!liff.isLoggedIn()) { liff.login(); }
-    }).catch(err => alert("初期化失敗: " + err));
+// 当月・先月・先々月のoptionを動的生成
+function buildMonthOptions() {
+  const select = document.getElementById('monthSelect');
+  const now = new Date();
+  select.innerHTML = "";
+  for (let i = 0; i <= 2; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const opt = document.createElement('option');
+    opt.value = `${m}__${y}`;          // "6__2025" のような形式で年月をまとめて持つ
+    opt.textContent = `${y}年${m}月度`;
+    if (i === 0) opt.selected = true;  // デフォルトは当月
+    select.appendChild(opt);
+  }
+}
 
-    // ボタンが押された時の処理
-    document.getElementById('reportForm').onsubmit = function(e) {
-        e.preventDefault();
-        
-        const btn = document.getElementById('submitBtn');
-        const loader = document.getElementById('loader');
-        const targetMonth = document.getElementById('monthSelect').value;
-        
-        btn.disabled = true;
-        loader.style.display = 'block';
+// LIFF初期化
+liff.init({ liffId: liffId }).then(() => {
+  if (!liff.isLoggedIn()) { liff.login(); }
+  buildMonthOptions();
+}).catch(err => alert("初期化失敗: " + err));
 
-        // ログイン中のユーザーID（あなた）を取得
-        liff.getProfile().then(profile => {
-            
-            // GitHubからGASへ「PDF作って！」とリクエストを送る（fetch通信）
-            fetch(gasUrl, {
-                method: "POST",
-                body: JSON.stringify({
-    type: "create_report",
-    userId: profile.userId,
-                    month: targetMonth
-                })
-            })
-            .then(response => response.json())
-            .then(res => {
-                loader.style.display = 'none';
-                btn.disabled = false;
-                
-                if (res.success) {
-                    generatedPdfUrl = res.pdfUrl;
-                    // ボタン類を表示させてリンク先を設定
-                    document.getElementById('resultArea').style.display = 'block';
-                    document.getElementById('pdfLink').href = generatedPdfUrl;
-                } else {
-                    alert("作成失敗: " + res.error);
-                }
-            })
-            .catch(err => {
-                loader.style.display = 'none';
-                btn.disabled = false;
-                alert("通信エラーが発生しました: " + err);
-            });
+// フォーム送信
+document.getElementById('reportForm').onsubmit = function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const loader = document.getElementById('loader');
 
-        });
-    };
+  // "6__2025" を分解して month と year を取り出す
+  const selectedValue = document.getElementById('monthSelect').value;
+  const parts = selectedValue.split('__');
+  const targetMonth = parts[0];
+  const targetYear  = parts[1];
 
-    // 共有ボタンが押された時（スマホ標準の共有メニューが開きます）
-    document.getElementById('shareBtn').onclick = function() {
-        if (navigator.share) {
-            navigator.share({
-                title: '稼働報告書',
-                text: '今月の稼働報告書（PDF）をお送りします。',
-                url: generatedPdfUrl
-            }).catch(err => console.log(err));
-        } else {
-            // パソコンなど共有機能がないブラウザの場合
-            alert("この端末は一発共有に対応していません。下の「PDFを直接開く」からURLをコピーして共有してください。");
-        }
-    };
+  btn.disabled = true;
+  loader.style.display = 'block';
+  document.getElementById('resultArea').style.display = 'none';
+
+  liff.getProfile().then(profile => {
+    fetch(gasUrl, {
+      method: "POST",
+      body: JSON.stringify({
+        type: "create_report",
+        userId: profile.userId,
+        month: targetMonth,
+        year: targetYear
+      })
+    })
+    .then(response => response.json())
+    .then(res => {
+      loader.style.display = 'none';
+      btn.disabled = false;
+      if (res.success) {
+        generatedPdfUrl = res.pdfUrl;
+        document.getElementById('resultArea').style.display = 'block';
+        document.getElementById('pdfLink').href = generatedPdfUrl;
+      } else {
+        alert("作成失敗: " + (res.error || "不明なエラー"));
+      }
+    })
+    .catch(err => {
+      loader.style.display = 'none';
+      btn.disabled = false;
+      alert("通信エラーが発生しました: " + err);
+    });
+  });
+};
+
+// 共有ボタン
+document.getElementById('shareBtn').onclick = function() {
+  if (navigator.share) {
+    navigator.share({
+      title: '稼働報告書',
+      text: '今月の稼働報告書（PDF）をお送りします。',
+      url: generatedPdfUrl
+    }).catch(err => console.log(err));
+  } else {
+    alert("この端末は一発共有に対応していません。\n下の「PDFを直接開く」からURLをコピーして共有してください。");
+  }
+};
 </script>
 </body>
 </html>
