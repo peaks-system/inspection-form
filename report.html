@@ -96,7 +96,7 @@
                     document.getElementById('resultArea').style.display = 'block';
                     document.getElementById('pdfLink').href = generatedPdfUrl;
                 } else {
-                    alert("作成失敗: " + res.message);
+                    alert("作成失敗: " + res.error);
                 }
             })
             .catch(err => {
