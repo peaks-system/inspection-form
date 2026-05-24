@@ -21,10 +21,12 @@
         #statusMsg { border-radius: 8px; padding: 12px 15px; margin-bottom: 15px; font-size: 14px; display: none; }
         #loader { display: none; text-align: center; padding: 15px; color: #555; }
         #userInfo { background: #fce8e0; border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; font-size: 14px; }
+        #dateSelect { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #e05c2a; background: #fff; font-size: 15px; font-weight: bold; color: #e05c2a; margin-bottom: 15px; }
     </style>
 </head>
 <body>
     <div id="userInfo">読み込み中...</div>
+    <select id="dateSelect"></select>
     <div id="statusMsg"></div>
     <div id="loader">送信中...</div>
 
@@ -60,6 +62,30 @@
 
         let currentUserId = null;
 
+        // JST で offset 日前の日付文字列 (yyyy-mm-dd) を返す
+        function jstDateStr(offsetDays) {
+            const d = new Date(Date.now() + 9 * 60 * 60 * 1000 - offsetDays * 24 * 60 * 60 * 1000);
+            return d.toISOString().slice(0, 10);
+        }
+
+        // 日付セレクタを今日〜6日前で構築
+        function buildDateSelector() {
+            const sel = document.getElementById('dateSelect');
+            const labels = ['今日', '昨日', '2日前', '3日前', '4日前', '5日前', '6日前'];
+            for (let i = 0; i < 7; i++) {
+                const val = jstDateStr(i);
+                const [, mm, dd] = val.split('-');
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = `${labels[i]}（${Number(mm)}/${Number(dd)}）`;
+                sel.appendChild(opt);
+            }
+        }
+
+        function getSelectedDate() {
+            return document.getElementById('dateSelect').value;
+        }
+
         function setCurrentTime() {
             const now = new Date();
             const hh = String(now.getHours()).padStart(2, '0');
@@ -71,29 +97,36 @@
             const el = document.getElementById('statusMsg');
             el.style.display = 'block';
             el.textContent = msg;
-            if (type === 'error') {
-                el.style.background = "#f8d7da";
-                el.style.border = "1px solid #f5c6cb";
-            } else {
-                el.style.background = "#d4edda";
-                el.style.border = "1px solid #c3e6cb";
-            }
+            el.style.background = type === 'error' ? "#f8d7da" : "#d4edda";
+            el.style.border   = type === 'error' ? "1px solid #f5c6cb" : "1px solid #c3e6cb";
         }
 
-        function checkStatus(userId) {
+        function resetFormState() {
+            document.getElementById('submitBtn').style.display = 'block';
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').textContent = '業務終了を送信';
+            document.getElementById('editBtn').style.display = 'none';
+            document.getElementById('statusMsg').style.display = 'none';
+            document.getElementById('editRow').value = '';
+            document.querySelector('[name="meterEnd"]').value = '';
+            document.querySelector('[name="deliveryCount"]').value = '';
+            document.querySelector('[name="notes"]').value = '';
+            setCurrentTime();
+        }
+
+        function checkStatus(userId, date) {
             fetch(GAS_URL, {
                 method: 'POST',
-                body: JSON.stringify({ type: "status", userId: userId })
+                body: JSON.stringify({ type: "status", userId: userId, date: date })
             })
             .then(res => res.json())
             .then(status => {
                 if (!status.workStartDone) {
-                    showStatus("⚠️ 業務開始が未登録です。先に業務開始を入力してください。", 'error');
+                    showStatus("⚠️ この日の業務開始が未登録です。先に業務開始を入力してください。", 'error');
                     return;
                 }
                 if (status.workEndDone) {
-                    // 終了済み→修正ボタンを表示
-                    showStatus("✅ 本日の業務終了は登録済みです。", 'ok');
+                    showStatus("✅ この日の業務終了は登録済みです。", 'ok');
                     document.getElementById('submitBtn').style.display = 'none';
                     document.getElementById('editBtn').style.display = 'block';
                     return;
@@ -106,16 +139,28 @@
             });
         }
 
-        // 修正ボタン：当日データを取得してフォームに反映
+        // 日付変更 → フォームをリセットして再チェック
+        document.getElementById('dateSelect').addEventListener('change', function() {
+            if (!currentUserId) return;
+            resetFormState();
+            checkStatus(currentUserId, this.value);
+        });
+
+        // 修正ボタン：選択日のデータを取得してフォームに反映
         document.getElementById('editBtn').addEventListener('click', function() {
             fetch(GAS_URL, {
                 method: 'POST',
-                body: JSON.stringify({ type: "get_today", userId: currentUserId, dataType: "work_end" })
+                body: JSON.stringify({
+                    type: "get_today",
+                    userId: currentUserId,
+                    dataType: "work_end",
+                    date: getSelectedDate()
+                })
             })
             .then(res => res.json())
             .then(data => {
                 if (!data.success) { alert("データの取得に失敗しました。"); return; }
-                document.getElementById('endTime').value = data.endTime || '';
+                document.getElementById('endTime').value = data.endTime ? data.endTime.slice(0, 5) : '';
                 document.querySelector('[name="meterEnd"]').value = data.meterEnd || '';
                 document.querySelector('[name="deliveryCount"]').value = data.deliveryCount || '';
                 document.querySelector('[name="notes"]').value = data.notes || '';
@@ -139,8 +184,9 @@
                 if (!profile) return;
                 currentUserId = profile.userId;
                 document.getElementById('userInfo').textContent = `ログイン中: ${profile.displayName}`;
+                buildDateSelector();
                 setCurrentTime();
-                checkStatus(currentUserId);
+                checkStatus(currentUserId, getSelectedDate());
             })
             .catch(err => {
                 document.getElementById('userInfo').textContent = "ユーザー情報取得失敗";
@@ -156,6 +202,7 @@
 
             const formData = new FormData(this);
             const data = Object.fromEntries(formData.entries());
+            data.date = getSelectedDate(); // 選択した日付を付与
 
             fetch(GAS_URL, {
                 method: 'POST',
