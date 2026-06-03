@@ -28,6 +28,12 @@
         #formatTabs button:first-child { border-radius: 6px 0 0 6px; }
         #formatTabs button:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
         #formatTabs button.active { background: #4a90d9; color: white; }
+        #todayLogs { margin-top: 5px; }
+        #todayLogs h3 { border-left: 5px solid #4a90d9; padding-left: 10px; font-size: 15px; margin: 0 0 10px; }
+        .log-card { background: white; border-radius: 8px; padding: 11px 14px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .log-card-text { flex: 1; font-size: 13px; color: #333; line-height: 1.5; }
+        .badge-ongoing { display: inline-block; background: #ffc107; color: white; font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
+        .edit-log-btn { flex-shrink: 0; background: none; border: 1px solid #4a90d9; color: #4a90d9; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; width: auto; margin: 0; }
     </style>
 </head>
 <body>
@@ -83,6 +89,11 @@
         <button type="button" id="editBtn">✏️ 内容を修正する</button>
     </form>
 
+    <div id="todayLogs" style="display:none;">
+        <h3>本日の入力済みデータ</h3>
+        <div id="todayLogsList"></div>
+    </div>
+
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
         const LIFF_ID = "2009986845-ylW7GCS1";
@@ -90,8 +101,12 @@
 
         let currentUserId = null;
         let selectedFormatType = 'A';
+        let todayLogs = [];
+        let tabAName = 'フォーマットA';
+        let tabBName = 'フォーマットB';
 
         function initTabs(aName, bName) {
+            tabAName = aName; tabBName = bName;
             document.getElementById('tabA').textContent = aName;
             document.getElementById('tabB').textContent = bName;
         }
@@ -101,6 +116,99 @@
             document.getElementById('tabA').classList.toggle('active', type === 'A');
             document.getElementById('tabB').classList.toggle('active', type === 'B');
             document.getElementById('formatBSection').style.display = type === 'B' ? 'block' : 'none';
+            updateSubmitLabel();
+        }
+
+        function updateSubmitLabel() {
+            const btn = document.getElementById('submitBtn');
+            if (btn.disabled || btn.textContent === '修正内容を保存') return;
+            if (selectedFormatType === 'B') {
+                const hasBLogs = todayLogs.some(l => l.format_type === 'B');
+                btn.textContent = hasBLogs ? '新規追加' : '業務開始を送信';
+            } else {
+                btn.textContent = '業務開始を送信';
+            }
+        }
+
+        function logCardText(log) {
+            const fmt = log.format_type === 'B' ? tabBName : tabAName;
+            const s = log.start_time ? log.start_time.slice(0,5) : '--';
+            const e = log.end_time   ? log.end_time.slice(0,5)   : null;
+            const timeStr = e ? `${s}〜${e}` : `${s}〜`;
+            if (log.format_type === 'B') {
+                const parts = [timeStr];
+                if (log.client_name)   parts.push(log.client_name);
+                if (log.loading_place) parts.push(log.loading_place);
+                if (log.delivery_count != null) parts.push(`${log.delivery_count}${log.delivery_unit || '件'}`);
+                return `[${fmt}] ${parts.join(' | ')}`;
+            } else {
+                const mStart = log.meter_start != null ? `${log.meter_start}km` : null;
+                const mEnd   = log.meter_end   != null ? `${log.meter_end}km`   : null;
+                const meter  = (mStart && mEnd) ? `${mStart}→${mEnd}` : (mStart || '');
+                const count  = log.delivery_count != null ? `${log.delivery_count}${log.delivery_unit || '件'}` : null;
+                const parts  = [timeStr, meter, count].filter(Boolean);
+                return `[${fmt}] ${parts.join(' | ')}`;
+            }
+        }
+
+        function renderTodayLogs(logs) {
+            const container = document.getElementById('todayLogsList');
+            const section   = document.getElementById('todayLogs');
+            if (!logs.length) { section.style.display = 'none'; return; }
+            section.style.display = 'block';
+            container.innerHTML = '';
+            logs.forEach(log => {
+                const card = document.createElement('div');
+                card.className = 'log-card';
+                const textDiv = document.createElement('div');
+                textDiv.className = 'log-card-text';
+                textDiv.textContent = logCardText(log);
+                if (!log.end_time) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge-ongoing';
+                    badge.textContent = '進行中';
+                    textDiv.appendChild(badge);
+                }
+                const editBtn = document.createElement('button');
+                editBtn.className = 'edit-log-btn';
+                editBtn.textContent = '✏️編集';
+                editBtn.onclick = () => loadLogIntoForm(log);
+                card.appendChild(textDiv);
+                card.appendChild(editBtn);
+                container.appendChild(card);
+            });
+        }
+
+        function loadTodayLogs(date) {
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ type: 'get_today', userId: currentUserId, dataType: 'list', date: date })
+            })
+            .then(r => r.json())
+            .then(res => {
+                todayLogs = res.todayLogs || [];
+                renderTodayLogs(todayLogs);
+                updateSubmitLabel();
+            })
+            .catch(() => {});
+        }
+
+        function loadLogIntoForm(log) {
+            document.getElementById('startTime').value = log.start_time ? log.start_time.slice(0,5) : '';
+            document.querySelector('[name="meterStart"]').value = log.meter_start || '';
+            document.querySelector('[name="clientName"]').value = log.client_name || '';
+            document.querySelector('[name="loadingPlace"]').value = log.loading_place || '';
+            document.querySelector('[name="notes"]').value = log.notes || '';
+            const alcSel = document.querySelector('[name="alcCheck"]');
+            if (log.alc_check) alcSel.value = log.alc_check;
+            document.getElementById('editRow').value = log.id;
+            if (log.format_type === 'B') selectTab('B'); else selectTab('A');
+            document.getElementById('editBtn').style.display = 'none';
+            document.getElementById('submitBtn').style.display = 'block';
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('submitBtn').textContent = '修正内容を保存';
+            document.getElementById('statusMsg').style.display = 'none';
+            window.scrollTo(0, 0);
         }
 
         // JST で offset 日前の日付文字列 (yyyy-mm-dd) を返す
@@ -147,6 +255,8 @@
             document.getElementById('submitBtn').disabled = true;
             document.getElementById('submitBtn').textContent = '業務開始を送信';
             document.getElementById('editBtn').style.display = 'none';
+            todayLogs = [];
+            renderTodayLogs([]);
             document.getElementById('statusMsg').style.display = 'none';
             document.getElementById('editRow').value = '';
             document.querySelector('[name="alcCheck"]').value = '〇';
@@ -166,6 +276,7 @@
             .then(res => res.json())
             .then(status => {
                 initTabs(status.formatAName || 'フォーマットA', status.formatBName || 'フォーマットB');
+                loadTodayLogs(date);
                 // 当日のみ点検チェック
                 if (isToday && !status.inspectionDone) {
                     showStatus("⚠️ 本日の日常点検が未完了です。先に点検を行ってください。", 'error');
@@ -179,6 +290,7 @@
                 }
                 showStatus("✅ 業務開始を入力してください。", 'ok');
                 document.getElementById('submitBtn').disabled = false;
+                updateSubmitLabel();
             })
             .catch(() => {
                 document.getElementById('submitBtn').disabled = false;
@@ -263,6 +375,7 @@
             .then(res => res.json())
             .then(result => {
                 if (result.success) {
+                    loadTodayLogs(getSelectedDate());
                     document.getElementById('workStartForm').style.display = 'none';
                     document.getElementById('successMsg').style.display = 'block';
                     document.getElementById('loader').style.display = 'none';
