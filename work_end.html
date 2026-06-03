@@ -41,7 +41,8 @@
         .log-card { background: white; border-radius: 8px; padding: 11px 14px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
         .log-card-text { flex: 1; font-size: 13px; color: #333; line-height: 1.5; }
         .badge-ongoing { display: inline-block; background: #ffc107; color: white; font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
-        .edit-log-btn { flex-shrink: 0; background: none; border: 1px solid #e05c2a; color: #e05c2a; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; width: auto; margin: 0; }
+        .edit-log-btn  { flex-shrink: 0; background: none; border: 1px solid #e05c2a; color: #e05c2a; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; width: auto; margin: 0; }
+        .del-log-btn   { flex-shrink: 0; background: none; border: 1px solid #dc3545; color: #dc3545; padding: 5px 8px;  border-radius: 4px; font-size: 12px; cursor: pointer; width: auto; margin: 0 0 0 4px; }
     </style>
 </head>
 <body>
@@ -164,23 +165,63 @@
         function renderTodayLogs(logs) {
             const container = document.getElementById('todayLogsList');
             const section   = document.getElementById('todayLogs');
-            if (!logs.length) { section.style.display = 'none'; return; }
+            // コンテナを先にクリア
+            while (container.firstChild) container.removeChild(container.firstChild);
+            if (!Array.isArray(logs) || !logs.length) {
+                section.style.display = 'none';
+                return;
+            }
             section.style.display = 'block';
-            container.innerHTML = '';
-            logs.forEach(log => {
+            // DocumentFragment にまとめてから一括追加
+            const frag = document.createDocumentFragment();
+            logs.forEach(function(log) {
                 const card = document.createElement('div');
                 card.className = 'log-card';
+
                 const textDiv = document.createElement('div');
                 textDiv.className = 'log-card-text';
                 textDiv.textContent = logCardText(log);
+
+                const btnWrap = document.createElement('div');
+                btnWrap.style.display = 'flex';
+                btnWrap.style.flexShrink = '0';
+
                 const editBtn = document.createElement('button');
+                editBtn.type = 'button';
                 editBtn.className = 'edit-log-btn';
                 editBtn.textContent = '✏️編集';
-                editBtn.onclick = () => loadLogIntoForm(log);
+                editBtn.onclick = (function(l){ return function(){ loadLogIntoForm(l); }; })(log);
+
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'del-log-btn';
+                delBtn.textContent = '🗑️';
+                delBtn.onclick = (function(l){ return function(){ deleteWorkLog(l); }; })(log);
+
+                btnWrap.appendChild(editBtn);
+                btnWrap.appendChild(delBtn);
                 card.appendChild(textDiv);
-                card.appendChild(editBtn);
-                container.appendChild(card);
+                card.appendChild(btnWrap);
+                frag.appendChild(card);
             });
+            container.appendChild(frag);
+        }
+
+        function deleteWorkLog(log) {
+            if (!confirm('このレコードを削除しますか？')) return;
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ type: 'delete_work_log', userId: currentUserId, logId: log.id })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    loadTodayLogs(getSelectedDate());
+                } else {
+                    alert('削除に失敗しました: ' + (res.error || '不明なエラー'));
+                }
+            })
+            .catch(() => alert('通信エラーが発生しました'));
         }
 
         function loadTodayLogs(date) {
