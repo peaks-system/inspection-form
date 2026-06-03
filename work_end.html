@@ -118,6 +118,7 @@
         let todayLogs = [];
         let tabAName = 'フォーマットA';
         let tabBName = 'フォーマットB';
+        let workStartBlocked = false;
 
         function initTabs(aName, bName) {
             tabAName = aName; tabBName = bName;
@@ -130,16 +131,54 @@
             document.getElementById('tabA').classList.toggle('active', type === 'A');
             document.getElementById('tabB').classList.toggle('active', type === 'B');
             document.getElementById('formatBSection').style.display = type === 'B' ? 'block' : 'none';
-            updateBButtonVisibility();
+            updateButtonState();
         }
 
-        function updateBButtonVisibility() {
-            if (selectedFormatType !== 'B') {
-                document.getElementById('addNewBtn').style.display = 'none';
+        function updateButtonState() {
+            const submitBtn = document.getElementById('submitBtn');
+            const editBtn   = document.getElementById('editBtn');
+            const addNewBtn = document.getElementById('addNewBtn');
+
+            // 編集モード中は変更しない
+            if (document.getElementById('editRow').value !== '' ||
+                submitBtn.textContent === '修正内容を保存') return;
+
+            // 業務開始未登録の場合はボタン無効のまま
+            if (workStartBlocked) {
+                submitBtn.style.display = 'block';
+                submitBtn.disabled = true;
+                editBtn.style.display = 'none';
+                addNewBtn.style.display = 'none';
                 return;
             }
-            const hasBLogs = todayLogs.some(l => l.format_type === 'B');
-            document.getElementById('addNewBtn').style.display = hasBLogs ? 'block' : 'none';
+
+            if (selectedFormatType === 'B') {
+                const hasIncompleteB = todayLogs.some(l => l.format_type === 'B' && !l.end_time);
+                if (hasIncompleteB) {
+                    submitBtn.style.display = 'none';
+                    editBtn.style.display = 'block';
+                    addNewBtn.style.display = 'block';
+                } else {
+                    submitBtn.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '登録する';
+                    editBtn.style.display = 'none';
+                    addNewBtn.style.display = 'none';
+                }
+            } else {
+                // Format A
+                const hasALog = todayLogs.some(l => l.format_type === 'A');
+                addNewBtn.style.display = 'none';
+                if (hasALog) {
+                    submitBtn.style.display = 'none';
+                    editBtn.style.display = 'block';
+                } else {
+                    submitBtn.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '登録する';
+                    editBtn.style.display = 'none';
+                }
+            }
         }
 
         function logCardText(log) {
@@ -233,7 +272,7 @@
             .then(res => {
                 todayLogs = res.todayLogs || [];
                 renderTodayLogs(todayLogs);
-                updateBButtonVisibility();
+                updateButtonState();
             })
             .catch(() => {});
         }
@@ -331,23 +370,16 @@
             .then(res => res.json())
             .then(status => {
                 initTabs(status.formatAName || 'フォーマットA', status.formatBName || 'フォーマットB');
-                loadTodayLogs(date);
                 if (!status.workStartDone) {
+                    workStartBlocked = true;
                     showStatus("⚠️ この日の業務開始が未登録です。先に業務開始を入力してください。", 'error');
-                    return;
+                } else {
+                    workStartBlocked = false;
+                    showStatus(status.workEndDone
+                        ? "✅ この日の業務終了は登録済みです。"
+                        : "✅ 業務終了を入力してください。", 'ok');
                 }
-                if (status.workEndDone) {
-                    showStatus("✅ この日の業務終了は登録済みです。", 'ok');
-                    document.getElementById('submitBtn').style.display = 'none';
-                    document.getElementById('editBtn').style.display = 'block';
-                    // フォーマットB：「新規追加」も表示
-                    if (selectedFormatType === 'B') {
-                        document.getElementById('addNewBtn').style.display = 'block';
-                    }
-                    return;
-                }
-                showStatus("✅ 業務終了を入力してください。", 'ok');
-                document.getElementById('submitBtn').disabled = false;
+                loadTodayLogs(date); // updateButtonState は loadTodayLogs 完了後に呼ばれる
             })
             .catch(() => {
                 document.getElementById('submitBtn').disabled = false;
