@@ -14,6 +14,14 @@
         input[type="text"], input[type="number"], input[type="time"] {
             padding: 8px; border-radius: 4px; border: 1px solid #ccc; background: #fff; font-size: 14px;
         }
+        .unit-toggle { display: flex; gap: 6px; margin-left: 8px; }
+        .unit-toggle button {
+            width: auto; margin: 0; padding: 8px 14px; font-size: 14px; font-weight: normal;
+            background: #eee; color: #333; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;
+        }
+        .unit-toggle button.active {
+            background: #e05c2a; color: white; border-color: #e05c2a;
+        }
         textarea { width: 100%; height: 70px; margin-top: 10px; border-radius: 4px; border: 1px solid #ccc; padding: 10px; box-sizing: border-box; font-size: 14px; }
         button { width: 100%; padding: 15px; background: #e05c2a; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         button:disabled { background: #aaa; }
@@ -43,7 +51,13 @@
             </div>
             <div class="item">
                 <label>配送件数（任意）</label>
-                <input type="number" name="deliveryCount" placeholder="例：35">
+                <div style="display:flex;align-items:center;">
+                    <input type="number" name="deliveryCount" placeholder="例：35">
+                    <div class="unit-toggle">
+                        <button type="button" id="unitKen" class="active" onclick="selectUnit('件')">件</button>
+                        <button type="button" id="unitKo" onclick="selectUnit('個')">個</button>
+                    </div>
+                </div>
             </div>
         </section>
         <section>
@@ -61,6 +75,13 @@
         const GAS_URL = "https://kantan-geppo.peaks-y-seitoh.workers.dev/api";
 
         let currentUserId = null;
+        let selectedUnit = '件';
+
+        function selectUnit(unit) {
+            selectedUnit = unit;
+            document.getElementById('unitKen').classList.toggle('active', unit === '件');
+            document.getElementById('unitKo').classList.toggle('active', unit === '個');
+        }
 
         // JST で offset 日前の日付文字列 (yyyy-mm-dd) を返す
         function jstDateStr(offsetDays) {
@@ -111,6 +132,7 @@
             document.querySelector('[name="meterEnd"]').value = '';
             document.querySelector('[name="deliveryCount"]').value = '';
             document.querySelector('[name="notes"]').value = '';
+            selectUnit('件');
             setCurrentTime();
         }
 
@@ -164,6 +186,7 @@
                 document.querySelector('[name="meterEnd"]').value = data.meterEnd || '';
                 document.querySelector('[name="deliveryCount"]').value = data.deliveryCount || '';
                 document.querySelector('[name="notes"]').value = data.notes || '';
+                selectUnit(data.deliveryUnit || '件');
                 document.getElementById('editRow').value = data.row;
 
                 document.getElementById('editBtn').style.display = 'none';
@@ -203,6 +226,7 @@
             const formData = new FormData(this);
             const data = Object.fromEntries(formData.entries());
             data.date = getSelectedDate(); // 選択した日付を付与
+            data.deliveryUnit = selectedUnit;
 
             fetch(GAS_URL, {
                 method: 'POST',
