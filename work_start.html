@@ -23,10 +23,19 @@
         #userInfo { background: #e8f0fe; border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; font-size: 14px; }
         #successMsg { background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 15px; margin-bottom: 15px; font-size: 14px; display: none; text-align: center; }
         #dateSelect { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #4a90d9; background: #fff; font-size: 15px; font-weight: bold; color: #4a90d9; margin-bottom: 15px; }
+        #formatTabs { display: flex; margin-bottom: 15px; }
+        #formatTabs button { flex: 1; padding: 10px; border: 1px solid #4a90d9; background: #fff; color: #4a90d9; font-size: 14px; font-weight: bold; cursor: pointer; }
+        #formatTabs button:first-child { border-radius: 6px 0 0 6px; }
+        #formatTabs button:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
+        #formatTabs button.active { background: #4a90d9; color: white; }
     </style>
 </head>
 <body>
     <div id="userInfo">読み込み中...</div>
+    <div id="formatTabs">
+        <button type="button" id="tabA" class="active" onclick="selectTab('A')">フォーマットA</button>
+        <button type="button" id="tabB" onclick="selectTab('B')">フォーマットB</button>
+    </div>
     <select id="dateSelect"></select>
     <div id="statusMsg"></div>
     <div id="successMsg">✅ 業務開始を登録しました</div>
@@ -80,11 +89,18 @@
         const GAS_URL = "https://kantan-geppo.peaks-y-seitoh.workers.dev/api";
 
         let currentUserId = null;
-        let currentFormatType = 'A';
+        let selectedFormatType = 'A';
 
-        function applyFormatType() {
-            document.getElementById('formatBSection').style.display =
-                currentFormatType === 'B' ? 'block' : 'none';
+        function initTabs(aName, bName) {
+            document.getElementById('tabA').textContent = aName;
+            document.getElementById('tabB').textContent = bName;
+        }
+
+        function selectTab(type) {
+            selectedFormatType = type;
+            document.getElementById('tabA').classList.toggle('active', type === 'A');
+            document.getElementById('tabB').classList.toggle('active', type === 'B');
+            document.getElementById('formatBSection').style.display = type === 'B' ? 'block' : 'none';
         }
 
         // JST で offset 日前の日付文字列 (yyyy-mm-dd) を返す
@@ -149,8 +165,7 @@
             })
             .then(res => res.json())
             .then(status => {
-                currentFormatType = status.formatType || 'A';
-                applyFormatType();
+                initTabs(status.formatAName || 'フォーマットA', status.formatBName || 'フォーマットB');
                 // 当日のみ点検チェック
                 if (isToday && !status.inspectionDone) {
                     showStatus("⚠️ 本日の日常点検が未完了です。先に点検を行ってください。", 'error');
@@ -237,6 +252,7 @@
             const formData = new FormData(this);
             const data = Object.fromEntries(formData.entries());
             data.date = getSelectedDate();
+            data.formatType = selectedFormatType;
             data.clientName = document.querySelector('[name="clientName"]').value || undefined;
             data.loadingPlace = document.querySelector('[name="loadingPlace"]').value || undefined;
 

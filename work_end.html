@@ -30,10 +30,19 @@
         #loader { display: none; text-align: center; padding: 15px; color: #555; }
         #userInfo { background: #fce8e0; border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; font-size: 14px; }
         #dateSelect { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #e05c2a; background: #fff; font-size: 15px; font-weight: bold; color: #e05c2a; margin-bottom: 15px; }
+        #formatTabs { display: flex; margin-bottom: 15px; }
+        #formatTabs button { flex: 1; padding: 10px; border: 1px solid #e05c2a; background: #fff; color: #e05c2a; font-size: 14px; font-weight: bold; cursor: pointer; }
+        #formatTabs button:first-child { border-radius: 6px 0 0 6px; }
+        #formatTabs button:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
+        #formatTabs button.active { background: #e05c2a; color: white; }
     </style>
 </head>
 <body>
     <div id="userInfo">読み込み中...</div>
+    <div id="formatTabs">
+        <button type="button" id="tabA" class="active" onclick="selectTab('A')">フォーマットA</button>
+        <button type="button" id="tabB" onclick="selectTab('B')">フォーマットB</button>
+    </div>
     <select id="dateSelect"></select>
     <div id="statusMsg"></div>
     <div id="loader">送信中...</div>
@@ -91,11 +100,18 @@
 
         let currentUserId = null;
         let selectedUnit = '件';
-        let currentFormatType = 'A';
+        let selectedFormatType = 'A';
 
-        function applyFormatType() {
-            document.getElementById('formatBSection').style.display =
-                currentFormatType === 'B' ? 'block' : 'none';
+        function initTabs(aName, bName) {
+            document.getElementById('tabA').textContent = aName;
+            document.getElementById('tabB').textContent = bName;
+        }
+
+        function selectTab(type) {
+            selectedFormatType = type;
+            document.getElementById('tabA').classList.toggle('active', type === 'A');
+            document.getElementById('tabB').classList.toggle('active', type === 'B');
+            document.getElementById('formatBSection').style.display = type === 'B' ? 'block' : 'none';
         }
 
         function selectUnit(unit) {
@@ -167,8 +183,7 @@
             })
             .then(res => res.json())
             .then(status => {
-                currentFormatType = status.formatType || 'A';
-                applyFormatType();
+                initTabs(status.formatAName || 'フォーマットA', status.formatBName || 'フォーマットB');
                 if (!status.workStartDone) {
                     showStatus("⚠️ この日の業務開始が未登録です。先に業務開始を入力してください。", 'error');
                     return;
@@ -255,6 +270,7 @@
             const formData = new FormData(this);
             const data = Object.fromEntries(formData.entries());
             data.date = getSelectedDate();
+            data.formatType = selectedFormatType;
             data.deliveryUnit = selectedUnit;
             data.deliveryPlace = document.querySelector('[name="deliveryPlace"]').value || undefined;
             data.arrivalTime = document.querySelector('[name="arrivalTime"]').value || undefined;

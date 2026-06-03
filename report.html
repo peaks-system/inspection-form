@@ -17,12 +17,22 @@ select { border: 1px solid #ccc; background: #fff; margin-bottom: 20px; }
 .btn-share { background: #28a745; color: white; border: none; font-weight: bold; margin-bottom: 10px; cursor: pointer; width: 100%; padding: 12px; border-radius: 6px; font-size: 16px; }
 .btn-open { background: #6c757d; color: white; border: none; font-weight: bold; text-align: center; text-decoration: none; display: block; padding: 12px; border-radius: 6px; font-size: 16px; line-height: 20px; }
 .loading { display: none; text-align: center; color: #ffc107; font-weight: bold; margin: 15px 0; }
+#formatTabs { display: flex; margin-bottom: 20px; }
+#formatTabs button { flex: 1; padding: 10px; border: 1px solid #007bff; background: #fff; color: #007bff; font-size: 14px; font-weight: bold; cursor: pointer; }
+#formatTabs button:first-child { border-radius: 6px 0 0 6px; }
+#formatTabs button:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
+#formatTabs button.active { background: #007bff; color: white; }
 </style>
 </head>
 <body>
 <div class="container">
   <h2>稼働報告書（PDF）の発行</h2>
   <div id="loader" class="loading">PDFを作成中。しばらくお待ちください...</div>
+
+  <div id="formatTabs">
+    <button type="button" id="tabA" class="active" onclick="selectTab('A')">フォーマットA</button>
+    <button type="button" id="tabB" onclick="selectTab('B')">フォーマットB</button>
+  </div>
 
   <form id="reportForm">
     <label for="monthSelect">作成する月を選択</label>
@@ -44,6 +54,18 @@ const liffId = "2009986845-1gtqJO4E";
 const gasUrl = "https://kantan-geppo.peaks-y-seitoh.workers.dev/api";
 
 let generatedPdfUrl = "";
+let selectedFormatType = 'A';
+
+function initTabs(aName, bName) {
+    document.getElementById('tabA').textContent = aName;
+    document.getElementById('tabB').textContent = bName;
+}
+
+function selectTab(type) {
+    selectedFormatType = type;
+    document.getElementById('tabA').classList.toggle('active', type === 'A');
+    document.getElementById('tabB').classList.toggle('active', type === 'B');
+}
 
 // 当月・先月・先々月のoptionを動的生成
 function buildMonthOptions() {
@@ -64,8 +86,18 @@ function buildMonthOptions() {
 
 // LIFF初期化
 liff.init({ liffId: liffId }).then(() => {
-  if (!liff.isLoggedIn()) { liff.login(); }
+  if (!liff.isLoggedIn()) { liff.login(); return; }
   buildMonthOptions();
+  return liff.getProfile();
+}).then(profile => {
+  if (!profile) return;
+  fetch(gasUrl, {
+    method: 'POST',
+    body: JSON.stringify({ type: 'status', userId: profile.userId })
+  })
+  .then(r => r.json())
+  .then(status => initTabs(status.formatAName || 'フォーマットA', status.formatBName || 'フォーマットB'))
+  .catch(() => {});
 }).catch(err => alert("初期化失敗: " + err));
 
 // フォーム送信
@@ -91,7 +123,8 @@ document.getElementById('reportForm').onsubmit = function(e) {
         type: "create_report",
         userId: profile.userId,
         month: targetMonth,
-        year: targetYear
+        year: targetYear,
+        formatType: selectedFormatType
       })
     })
     .then(response => response.json())
