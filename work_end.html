@@ -83,10 +83,6 @@
                 <label>納品場所/終了地</label>
                 <input type="text" name="deliveryPlace" placeholder="例：○○センター">
             </div>
-            <div class="item">
-                <label>完了時刻</label>
-                <input type="time" name="completionTime">
-            </div>
         </section>
         <section>
             <h3>備考</h3>
@@ -278,7 +274,7 @@
             document.querySelector('[name="meterEnd"]').value = log.meter_end || '';
             document.querySelector('[name="deliveryCount"]').value = log.delivery_count || '';
             document.querySelector('[name="deliveryPlace"]').value = log.delivery_place || '';
-            document.querySelector('[name="completionTime"]').value = log.completion_time ? log.completion_time.slice(0,5) : '';
+
             document.querySelector('[name="notes"]').value = log.notes || '';
             selectUnit(log.delivery_unit || '件');
             document.getElementById('editRow').value = log.id;
@@ -351,7 +347,7 @@
             document.querySelector('[name="deliveryCount"]').value = '';
             document.querySelector('[name="deliveryPlace"]').value = '';
 
-            document.querySelector('[name="completionTime"]').value = '';
+
             document.querySelector('[name="notes"]').value = '';
             selectUnit('件');
             setCurrentTime();
@@ -388,7 +384,7 @@
             document.querySelector('[name="deliveryCount"]').value = '';
             document.querySelector('[name="deliveryPlace"]').value = '';
 
-            document.querySelector('[name="completionTime"]').value = '';
+
             document.querySelector('[name="notes"]').value = '';
             selectUnit('件');
             setCurrentTime();
@@ -426,7 +422,7 @@
                 document.querySelector('[name="meterEnd"]').value = data.meterEnd || '';
                 document.querySelector('[name="deliveryCount"]').value = data.deliveryCount || '';
                 document.querySelector('[name="deliveryPlace"]').value = data.deliveryPlace || '';
-                document.querySelector('[name="completionTime"]').value = data.completionTime ? data.completionTime.slice(0, 5) : '';
+
                 document.querySelector('[name="notes"]').value = data.notes || '';
                 selectUnit(data.deliveryUnit || '件');
                 document.getElementById('editRow').value = data.row;
@@ -471,7 +467,7 @@
             data.formatType = selectedFormatType;
             data.deliveryUnit = selectedUnit;
             data.deliveryPlace = document.querySelector('[name="deliveryPlace"]').value || undefined;
-            data.completionTime = document.querySelector('[name="completionTime"]').value || undefined;
+
 
             fetch(GAS_URL, {
                 method: 'POST',
