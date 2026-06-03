@@ -54,6 +54,17 @@
                 <input type="number" name="meterStart" placeholder="例：12345">
             </div>
         </section>
+        <section id="formatBSection" style="display:none;">
+            <h3>追加情報（フォーマットB）</h3>
+            <div class="item">
+                <label>取引先</label>
+                <input type="text" name="clientName" placeholder="例：○○株式会社">
+            </div>
+            <div class="item">
+                <label>積み地</label>
+                <input type="text" name="loadingPlace" placeholder="例：○○倉庫">
+            </div>
+        </section>
         <section>
             <h3>備考</h3>
             <textarea name="notes" placeholder="任意入力"></textarea>
@@ -69,6 +80,12 @@
         const GAS_URL = "https://kantan-geppo.peaks-y-seitoh.workers.dev/api";
 
         let currentUserId = null;
+        let currentFormatType = 'A';
+
+        function applyFormatType() {
+            document.getElementById('formatBSection').style.display =
+                currentFormatType === 'B' ? 'block' : 'none';
+        }
 
         // JST で offset 日前の日付文字列 (yyyy-mm-dd) を返す
         function jstDateStr(offsetDays) {
@@ -118,6 +135,8 @@
             document.getElementById('editRow').value = '';
             document.querySelector('[name="alcCheck"]').value = '〇';
             document.querySelector('[name="meterStart"]').value = '';
+            document.querySelector('[name="clientName"]').value = '';
+            document.querySelector('[name="loadingPlace"]').value = '';
             document.querySelector('[name="notes"]').value = '';
             setCurrentTime();
         }
@@ -130,6 +149,8 @@
             })
             .then(res => res.json())
             .then(status => {
+                currentFormatType = status.formatType || 'A';
+                applyFormatType();
                 // 当日のみ点検チェック
                 if (isToday && !status.inspectionDone) {
                     showStatus("⚠️ 本日の日常点検が未完了です。先に点検を行ってください。", 'error');
@@ -172,6 +193,8 @@
                 if (!data.success) { alert("データの取得に失敗しました。"); return; }
                 document.getElementById('startTime').value = data.startTime ? data.startTime.slice(0, 5) : '';
                 document.querySelector('[name="meterStart"]').value = data.meterStart || '';
+                document.querySelector('[name="clientName"]').value = data.clientName || '';
+                document.querySelector('[name="loadingPlace"]').value = data.loadingPlace || '';
                 document.querySelector('[name="notes"]').value = data.notes || '';
                 const alcSelect = document.querySelector('[name="alcCheck"]');
                 if (data.alcCheck) alcSelect.value = data.alcCheck;
@@ -213,7 +236,9 @@
 
             const formData = new FormData(this);
             const data = Object.fromEntries(formData.entries());
-            data.date = getSelectedDate(); // 選択した日付を付与
+            data.date = getSelectedDate();
+            data.clientName = document.querySelector('[name="clientName"]').value || undefined;
+            data.loadingPlace = document.querySelector('[name="loadingPlace"]').value || undefined;
 
             fetch(GAS_URL, {
                 method: 'POST',

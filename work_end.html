@@ -60,6 +60,21 @@
                 </div>
             </div>
         </section>
+        <section id="formatBSection" style="display:none;">
+            <h3>追加情報（フォーマットB）</h3>
+            <div class="item">
+                <label>納品場所/終了地</label>
+                <input type="text" name="deliveryPlace" placeholder="例：○○センター">
+            </div>
+            <div class="item">
+                <label>着車時刻</label>
+                <input type="time" name="arrivalTime">
+            </div>
+            <div class="item">
+                <label>完了時刻</label>
+                <input type="time" name="completionTime">
+            </div>
+        </section>
         <section>
             <h3>備考</h3>
             <textarea name="notes" placeholder="任意入力"></textarea>
@@ -76,6 +91,12 @@
 
         let currentUserId = null;
         let selectedUnit = '件';
+        let currentFormatType = 'A';
+
+        function applyFormatType() {
+            document.getElementById('formatBSection').style.display =
+                currentFormatType === 'B' ? 'block' : 'none';
+        }
 
         function selectUnit(unit) {
             selectedUnit = unit;
@@ -131,6 +152,9 @@
             document.getElementById('editRow').value = '';
             document.querySelector('[name="meterEnd"]').value = '';
             document.querySelector('[name="deliveryCount"]').value = '';
+            document.querySelector('[name="deliveryPlace"]').value = '';
+            document.querySelector('[name="arrivalTime"]').value = '';
+            document.querySelector('[name="completionTime"]').value = '';
             document.querySelector('[name="notes"]').value = '';
             selectUnit('件');
             setCurrentTime();
@@ -143,6 +167,8 @@
             })
             .then(res => res.json())
             .then(status => {
+                currentFormatType = status.formatType || 'A';
+                applyFormatType();
                 if (!status.workStartDone) {
                     showStatus("⚠️ この日の業務開始が未登録です。先に業務開始を入力してください。", 'error');
                     return;
@@ -185,6 +211,9 @@
                 document.getElementById('endTime').value = data.endTime ? data.endTime.slice(0, 5) : '';
                 document.querySelector('[name="meterEnd"]').value = data.meterEnd || '';
                 document.querySelector('[name="deliveryCount"]').value = data.deliveryCount || '';
+                document.querySelector('[name="deliveryPlace"]').value = data.deliveryPlace || '';
+                document.querySelector('[name="arrivalTime"]').value = data.arrivalTime ? data.arrivalTime.slice(0, 5) : '';
+                document.querySelector('[name="completionTime"]').value = data.completionTime ? data.completionTime.slice(0, 5) : '';
                 document.querySelector('[name="notes"]').value = data.notes || '';
                 selectUnit(data.deliveryUnit || '件');
                 document.getElementById('editRow').value = data.row;
@@ -225,8 +254,11 @@
 
             const formData = new FormData(this);
             const data = Object.fromEntries(formData.entries());
-            data.date = getSelectedDate(); // 選択した日付を付与
+            data.date = getSelectedDate();
             data.deliveryUnit = selectedUnit;
+            data.deliveryPlace = document.querySelector('[name="deliveryPlace"]').value || undefined;
+            data.arrivalTime = document.querySelector('[name="arrivalTime"]').value || undefined;
+            data.completionTime = document.querySelector('[name="completionTime"]').value || undefined;
 
             fetch(GAS_URL, {
                 method: 'POST',
