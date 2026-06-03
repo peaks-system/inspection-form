@@ -84,10 +84,6 @@
                 <input type="text" name="deliveryPlace" placeholder="例：○○センター">
             </div>
             <div class="item">
-                <label>着車時刻</label>
-                <input type="time" name="arrivalTime">
-            </div>
-            <div class="item">
                 <label>完了時刻</label>
                 <input type="time" name="completionTime">
             </div>
@@ -282,7 +278,6 @@
             document.querySelector('[name="meterEnd"]').value = log.meter_end || '';
             document.querySelector('[name="deliveryCount"]').value = log.delivery_count || '';
             document.querySelector('[name="deliveryPlace"]').value = log.delivery_place || '';
-            document.querySelector('[name="arrivalTime"]').value = log.arrival_time ? log.arrival_time.slice(0,5) : '';
             document.querySelector('[name="completionTime"]').value = log.completion_time ? log.completion_time.slice(0,5) : '';
             document.querySelector('[name="notes"]').value = log.notes || '';
             selectUnit(log.delivery_unit || '件');
@@ -355,7 +350,7 @@
             document.querySelector('[name="meterEnd"]').value = '';
             document.querySelector('[name="deliveryCount"]').value = '';
             document.querySelector('[name="deliveryPlace"]').value = '';
-            document.querySelector('[name="arrivalTime"]').value = '';
+
             document.querySelector('[name="completionTime"]').value = '';
             document.querySelector('[name="notes"]').value = '';
             selectUnit('件');
@@ -392,7 +387,7 @@
             document.querySelector('[name="meterEnd"]').value = '';
             document.querySelector('[name="deliveryCount"]').value = '';
             document.querySelector('[name="deliveryPlace"]').value = '';
-            document.querySelector('[name="arrivalTime"]').value = '';
+
             document.querySelector('[name="completionTime"]').value = '';
             document.querySelector('[name="notes"]').value = '';
             selectUnit('件');
@@ -431,7 +426,6 @@
                 document.querySelector('[name="meterEnd"]').value = data.meterEnd || '';
                 document.querySelector('[name="deliveryCount"]').value = data.deliveryCount || '';
                 document.querySelector('[name="deliveryPlace"]').value = data.deliveryPlace || '';
-                document.querySelector('[name="arrivalTime"]').value = data.arrivalTime ? data.arrivalTime.slice(0, 5) : '';
                 document.querySelector('[name="completionTime"]').value = data.completionTime ? data.completionTime.slice(0, 5) : '';
                 document.querySelector('[name="notes"]').value = data.notes || '';
                 selectUnit(data.deliveryUnit || '件');
@@ -477,7 +471,6 @@
             data.formatType = selectedFormatType;
             data.deliveryUnit = selectedUnit;
             data.deliveryPlace = document.querySelector('[name="deliveryPlace"]').value || undefined;
-            data.arrivalTime = document.querySelector('[name="arrivalTime"]').value || undefined;
             data.completionTime = document.querySelector('[name="completionTime"]').value || undefined;
 
             fetch(GAS_URL, {
