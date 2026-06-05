@@ -28,6 +28,9 @@
         #formatTabs button:first-child { border-radius: 6px 0 0 6px; }
         #formatTabs button:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
         #formatTabs button.active { background: #4a90d9; color: white; }
+        #clientNameDropdownArea { margin-bottom: 10px; display: none; }
+        #clientNameDropdownArea label { font-size: 14px; font-weight: bold; margin-bottom: 5px; display: block; }
+        #clientNameDropdown { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #4a90d9; background: #fff; font-size: 15px; }
         #todayLogs { margin-top: 5px; }
         #todayLogs h3 { border-left: 5px solid #4a90d9; padding-left: 10px; font-size: 15px; margin: 0 0 10px; }
         .log-card { background: white; border-radius: 8px; padding: 11px 14px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -42,6 +45,10 @@
     <div id="formatTabs">
         <button type="button" id="tabA" class="active" onclick="selectTab('A')">フォーマットA</button>
         <button type="button" id="tabB" onclick="selectTab('B')">フォーマットB</button>
+    </div>
+    <div id="clientNameDropdownArea">
+      <label>現場名を選択</label>
+      <select id="clientNameDropdown"></select>
     </div>
     <select id="dateSelect"></select>
     <div id="statusMsg"></div>
@@ -106,6 +113,52 @@
         let tabAName = 'フォーマットA';
         let tabBName = 'フォーマットB';
         let inspectionBlocked = false;
+        let userCompanies = [];
+
+        function loadUserCompanies(userId) {
+          fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ type: 'get_user_companies', userId })
+          })
+          .then(r => r.json())
+          .then(data => {
+            userCompanies = data.userCompanies || [];
+            updateClientNameDropdown();
+          })
+          .catch(() => {});
+        }
+
+        function updateClientNameDropdown() {
+          const filtered = userCompanies
+            .filter(uc => uc.format_type === selectedFormatType)
+            .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+          const area = document.getElementById('clientNameDropdownArea');
+          const select = document.getElementById('clientNameDropdown');
+
+          if (filtered.length <= 1) {
+            area.style.display = 'none';
+            return;
+          }
+
+          area.style.display = 'block';
+          select.innerHTML = '';
+          filtered.forEach(uc => {
+            const opt = document.createElement('option');
+            opt.value = uc.client_name || '';
+            opt.textContent = uc.client_name || '（現場名なし）';
+            select.appendChild(opt);
+          });
+        }
+
+        function getSelectedClientNameFromDropdown() {
+          const filtered = userCompanies
+            .filter(uc => uc.format_type === selectedFormatType)
+            .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+          if (filtered.length === 0) return null;
+          if (filtered.length === 1) return filtered[0].client_name || null;
+          return document.getElementById('clientNameDropdown').value || null;
+        }
 
         function initTabs(aName, bName) {
             tabAName = aName; tabBName = bName;
@@ -118,6 +171,7 @@
             document.getElementById('tabA').classList.toggle('active', type === 'A');
             document.getElementById('tabB').classList.toggle('active', type === 'B');
             document.getElementById('formatBSection').style.display = type === 'B' ? 'block' : 'none';
+            updateClientNameDropdown();
             updateButtonState();
         }
 
@@ -402,6 +456,7 @@
                 buildDateSelector();
                 setCurrentTime();
                 checkStatus(currentUserId, getSelectedDate());
+                loadUserCompanies(profile.userId);
             })
             .catch(err => {
                 document.getElementById('userInfo').textContent = "ユーザー情報取得失敗";
@@ -419,7 +474,8 @@
             const data = Object.fromEntries(formData.entries());
             data.date = getSelectedDate();
             data.formatType = selectedFormatType;
-            data.clientName = document.querySelector('[name="clientName"]').value || undefined;
+            const dropdownClientName = getSelectedClientNameFromDropdown();
+            data.clientName = dropdownClientName || document.querySelector('[name="clientName"]').value || undefined;
             data.loadingPlace = document.querySelector('[name="loadingPlace"]').value || undefined;
 
             fetch(GAS_URL, {
