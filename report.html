@@ -22,6 +22,8 @@ select { border: 1px solid #ccc; background: #fff; margin-bottom: 20px; }
 #formatTabs button:first-child { border-radius: 6px 0 0 6px; }
 #formatTabs button:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
 #formatTabs button.active { background: #007bff; color: white; }
+#clientNameArea { margin-bottom: 20px; display: none; }
+#clientNameSelect { width: 100%; padding: 12px; border-radius: 6px; font-size: 16px; box-sizing: border-box; border: 1px solid #ccc; background: #fff; }
 </style>
 </head>
 <body>
@@ -35,6 +37,10 @@ select { border: 1px solid #ccc; background: #fff; margin-bottom: 20px; }
   </div>
 
   <form id="reportForm">
+    <div id="clientNameArea">
+      <label for="clientNameSelect">現場名を選択</label>
+      <select id="clientNameSelect"></select>
+    </div>
     <label for="monthSelect">作成する月を選択</label>
     <select id="monthSelect" name="month">
       <!-- 動的に生成 -->
@@ -55,6 +61,7 @@ const gasUrl = "https://kantan-geppo.peaks-y-seitoh.workers.dev/api";
 
 let generatedPdfUrl = "";
 let selectedFormatType = 'A';
+let userCompanies = []; // {id, format_type, client_name, sort_order}
 
 function initTabs(aName, bName) {
     document.getElementById('tabA').textContent = aName;
@@ -65,6 +72,52 @@ function selectTab(type) {
     selectedFormatType = type;
     document.getElementById('tabA').classList.toggle('active', type === 'A');
     document.getElementById('tabB').classList.toggle('active', type === 'B');
+    updateClientNameSelect();
+}
+
+function loadUserCompanies(userId) {
+  fetch(gasUrl, {
+    method: 'POST',
+    body: JSON.stringify({ type: 'get_user_companies', userId })
+  })
+  .then(r => r.json())
+  .then(data => {
+    userCompanies = data.userCompanies || [];
+    updateClientNameSelect();
+  })
+  .catch(() => {});
+}
+
+function updateClientNameSelect() {
+  const filtered = userCompanies
+    .filter(uc => uc.format_type === selectedFormatType)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+  const area = document.getElementById('clientNameArea');
+  const select = document.getElementById('clientNameSelect');
+
+  if (filtered.length <= 1) {
+    area.style.display = 'none';
+    return;
+  }
+
+  area.style.display = 'block';
+  select.innerHTML = '';
+  filtered.forEach(uc => {
+    const opt = document.createElement('option');
+    opt.value = uc.client_name || '';
+    opt.textContent = uc.client_name || '（現場名なし）';
+    select.appendChild(opt);
+  });
+}
+
+function getSelectedClientName() {
+  const filtered = userCompanies
+    .filter(uc => uc.format_type === selectedFormatType)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  if (filtered.length === 0) return null;
+  if (filtered.length === 1) return filtered[0].client_name || null;
+  return document.getElementById('clientNameSelect').value || null;
 }
 
 // 当月・先月・先々月のoptionを動的生成
@@ -98,6 +151,7 @@ liff.init({ liffId: liffId }).then(() => {
   .then(r => r.json())
   .then(status => initTabs(status.formatAName || 'フォーマットA', status.formatBName || 'フォーマットB'))
   .catch(() => {});
+  loadUserCompanies(profile.userId);
 }).catch(err => alert("初期化失敗: " + err));
 
 // フォーム送信
@@ -124,7 +178,8 @@ document.getElementById('reportForm').onsubmit = function(e) {
         userId: profile.userId,
         month: targetMonth,
         year: targetYear,
-        formatType: selectedFormatType
+        formatType: selectedFormatType,
+        clientName: getSelectedClientName()
       })
     })
     .then(response => response.json())
