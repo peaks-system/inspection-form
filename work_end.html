@@ -42,6 +42,7 @@
         .log-card-text { flex: 1; font-size: 13px; color: #333; line-height: 1.5; }
         .badge-ongoing { display: inline-block; background: #ffc107; color: white; font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
         .edit-log-btn  { flex-shrink: 0; background: none; border: 1px solid #e05c2a; color: #e05c2a; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; width: auto; margin: 0; }
+        .end-log-btn   { flex-shrink: 0; background: #e05c2a; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; width: auto; margin: 0; font-weight: bold; }
         .del-log-btn   { flex-shrink: 0; background: none; border: 1px solid #dc3545; color: #dc3545; padding: 5px 8px;  border-radius: 4px; font-size: 12px; cursor: pointer; width: auto; margin: 0 0 0 4px; }
     </style>
 </head>
@@ -131,11 +132,9 @@
             const editBtn   = document.getElementById('editBtn');
             const addNewBtn = document.getElementById('addNewBtn');
 
-            // 編集モード中は変更しない
             if (document.getElementById('editRow').value !== '' ||
                 submitBtn.textContent === '修正内容を保存') return;
 
-            // 業務開始未登録の場合はボタン無効のまま
             if (workStartBlocked) {
                 submitBtn.style.display = 'block';
                 submitBtn.disabled = true;
@@ -144,32 +143,25 @@
                 return;
             }
 
-            if (selectedFormatType === 'B') {
-                const hasIncompleteB = todayLogs.some(l => l.format_type === 'B' && !l.end_time);
-                if (hasIncompleteB) {
-                    submitBtn.style.display = 'none';
-                    editBtn.style.display = 'block';
-                    addNewBtn.style.display = 'block';
-                } else {
-                    submitBtn.style.display = 'block';
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = '登録する';
-                    editBtn.style.display = 'none';
-                    addNewBtn.style.display = 'none';
-                }
-            } else {
-                // Format A
-                const hasALog = todayLogs.some(l => l.format_type === 'A');
+            const hasOngoing = todayLogs.some(l => !l.end_time);
+            const hasIncompleteB = todayLogs.some(l => l.format_type === 'B' && !l.end_time);
+
+            if (hasOngoing) {
+                // 進行中レコードがある場合はフォームを隠して下のリストから選ぶよう促す
+                submitBtn.style.display = 'none';
+                editBtn.style.display = 'none';
                 addNewBtn.style.display = 'none';
-                if (hasALog) {
-                    submitBtn.style.display = 'none';
-                    editBtn.style.display = 'block';
-                } else {
-                    submitBtn.style.display = 'block';
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = '登録する';
-                    editBtn.style.display = 'none';
-                }
+                showStatus("⬇️ 下の一覧から「✅終了入力」を押して業務を終了してください。", 'ok');
+            } else if (selectedFormatType === 'B' && hasIncompleteB) {
+                submitBtn.style.display = 'none';
+                editBtn.style.display = 'block';
+                addNewBtn.style.display = 'block';
+            } else {
+                submitBtn.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.textContent = '登録する';
+                editBtn.style.display = 'none';
+                addNewBtn.style.display = 'none';
             }
         }
 
@@ -219,8 +211,8 @@
 
                 const editBtn = document.createElement('button');
                 editBtn.type = 'button';
-                editBtn.className = 'edit-log-btn';
-                editBtn.textContent = '✏️編集';
+                editBtn.className = log.end_time ? 'edit-log-btn' : 'end-log-btn';
+                editBtn.textContent = log.end_time ? '✏️編集' : '✅終了入力';
                 editBtn.onclick = (function(l){ return function(){ loadLogIntoForm(l); }; })(log);
 
                 const delBtn = document.createElement('button');
@@ -283,7 +275,7 @@
             document.getElementById('addNewBtn').style.display = 'none';
             document.getElementById('submitBtn').style.display = 'block';
             document.getElementById('submitBtn').disabled = false;
-            document.getElementById('submitBtn').textContent = '修正内容を保存';
+            document.getElementById('submitBtn').textContent = log.end_time ? '修正内容を保存' : '業務終了を登録';
             document.getElementById('statusMsg').style.display = 'none';
             window.scrollTo(0, 0);
         }

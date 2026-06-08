@@ -196,16 +196,11 @@
                 submitBtn.disabled = false;
                 submitBtn.textContent = hasBLogs ? '新規追加' : '登録する';
             } else {
-                const hasALog = todayLogs.some(l => l.format_type === 'A');
-                if (hasALog) {
-                    submitBtn.style.display = 'none';
-                    editBtn.style.display = 'block';
-                } else {
-                    submitBtn.style.display = 'block';
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = '登録する';
-                    editBtn.style.display = 'none';
-                }
+                // フォーマットAも複数入力可能
+                editBtn.style.display = 'none';
+                submitBtn.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.textContent = todayLogs.some(l => l.format_type === 'A') ? '新規追加' : '登録する';
             }
         }
 
@@ -478,6 +473,15 @@
             data.clientName = dropdownClientName || document.querySelector('[name="clientName"]').value || undefined;
             data.loadingPlace = document.querySelector('[name="loadingPlace"]').value || undefined;
 
+            // user_company_idを取得して送信
+            const filtered = userCompanies
+              .filter(uc => uc.format_type === selectedFormatType)
+              .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+            const selectedUc = filtered.length === 1
+              ? filtered[0]
+              : filtered.find(uc => uc.client_name === dropdownClientName) ?? filtered[0];
+            data.userCompanyId = selectedUc?.id ?? undefined;
+
             fetch(GAS_URL, {
                 method: 'POST',
                 body: JSON.stringify({ type: "work_start", userId: currentUserId, data: data })
@@ -486,11 +490,16 @@
             .then(result => {
                 if (result.success) {
                     loadTodayLogs(getSelectedDate());
-                    document.getElementById('workStartForm').style.display = 'none';
-                    document.getElementById('successMsg').style.display = 'block';
                     document.getElementById('loader').style.display = 'none';
                     document.getElementById('statusMsg').style.display = 'none';
-                    document.getElementById('editBtn').style.display = 'block';
+                    // フォームをリセットして追加入力可能にする
+                    document.querySelector('[name="alcCheck"]').value = '〇';
+                    document.querySelector('[name="meterStart"]').value = '';
+                    document.querySelector('[name="clientName"]').value = '';
+                    document.querySelector('[name="loadingPlace"]').value = '';
+                    document.querySelector('[name="notes"]').value = '';
+                    document.getElementById('editRow').value = '';
+                    setCurrentTime();
                     setTimeout(() => liff.closeWindow(), 1500);
                 } else {
                     throw new Error(result.error || "不明なエラー");
