@@ -166,7 +166,9 @@
         }
 
         function logCardText(log) {
-            const fmt = log.format_type === 'B' ? tabBName : tabAName;
+            const fmtLabel = log.format_type === 'B' ? 'B' : 'A';
+            const clientLabel = log.client_name ? `（${log.client_name}）` : '';
+            const fmt = `📄${fmtLabel}${clientLabel}`;
             const s = log.start_time ? log.start_time.slice(0,5) : '--';
             const e = log.end_time   ? log.end_time.slice(0,5)   : null;
             const timeStr = e ? `${s}〜${e}` : `${s}〜 進行中`;
