@@ -180,10 +180,16 @@
                             <div class="meta">${exp.category}${exp.comment ? '　' + exp.comment : ''}</div>
                         </div>
                         <div class="saved-actions">
-                            <button class="edit-saved-btn" onclick="openEditModal(${exp.row}, '${exp.category}', ${exp.amount}, '${exp.comment || ''}')">✏️</button>
-                            <button class="del-saved-btn" onclick="deleteSaved(${exp.row}, this)">🗑️</button>
+                            <button class="edit-saved-btn" data-row="${exp.row}" data-category="${exp.category}" data-amount="${exp.amount}" data-comment="${exp.comment || ''}">✏️</button>
+                            <button class="del-saved-btn" data-row="${exp.row}">🗑️</button>
                         </div>
                     `;
+                    div.querySelector('.edit-saved-btn').addEventListener('click', function() {
+                        openEditModal(this.dataset.row, this.dataset.category, this.dataset.amount, this.dataset.comment);
+                    });
+                    div.querySelector('.del-saved-btn').addEventListener('click', function() {
+                        deleteSaved(this.dataset.row, this);
+                    });
                     list.appendChild(div);
                 });
             })
