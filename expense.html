@@ -144,13 +144,17 @@
         function updateClientNameDropdown() {
             const area = document.getElementById('clientNameDropdownArea');
             const sel = document.getElementById('clientNameDropdown');
-            // 全フォーマットの現場を表示
-            const filtered = userCompanies.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+            const filtered = userCompanies
+                .slice()
+                .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
             while (sel.firstChild) sel.removeChild(sel.firstChild);
             filtered.forEach(uc => {
                 const opt = document.createElement('option');
                 opt.value = uc.id;
-                opt.textContent = `${uc.client_name}（フォーマット${uc.format_type}）`;
+                // client_nameがある場合はそれを表示、ない場合はフォーマット名で表示
+                opt.textContent = uc.client_name
+                    ? `${uc.client_name}（フォーマット${uc.format_type}）`
+                    : `フォーマット${uc.format_type}`;
                 sel.appendChild(opt);
             });
             area.style.display = filtered.length > 0 ? 'block' : 'none';
