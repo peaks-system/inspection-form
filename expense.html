@@ -123,6 +123,10 @@
             if (currentUserId) loadSavedExpenses();
         });
 
+        document.getElementById('clientNameDropdown').addEventListener('change', function() {
+            if (currentUserId) loadSavedExpenses();
+        });
+
         function loadUserCompanies(userId) {
             fetch(GAS_URL, {
                 method: 'POST',
@@ -132,6 +136,7 @@
             .then(res => {
                 userCompanies = res.userCompanies || [];
                 updateClientNameDropdown();
+                loadSavedExpenses();
             })
             .catch(() => {});
         }
@@ -310,7 +315,6 @@
                 currentUserId = profile.userId;
                 document.getElementById('userInfo').textContent = `ログイン中: ${profile.displayName}`;
                 buildDateSelector();
-                loadSavedExpenses();
                 loadUserCompanies(profile.userId);
             })
             .catch(err => {
