@@ -47,6 +47,11 @@
 </head>
 <body>
     <div id="userInfo">読み込み中...</div>
+    <div id="clientNameDropdownArea" style="margin-bottom:15px; display:none;">
+      <label style="font-size:14px; font-weight:bold; display:block; margin-bottom:6px;">現場を選択</label>
+      <select id="clientNameDropdown" style="width:100%; padding:10px; border-radius:6px; border:1px solid #7b52d3; background:#fff; font-size:15px; font-weight:bold; color:#7b52d3;">
+      </select>
+    </div>
     <div id="loader">処理中...</div>
 
     <!-- 登録済み経費一覧 -->
@@ -88,6 +93,39 @@
         let currentUserId = null;
         let blockCount = 0;
         let editingRow = null;
+        let userCompanies = [];
+
+        function loadUserCompanies(userId) {
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ type: 'get_user_companies', userId: userId })
+            })
+            .then(r => r.json())
+            .then(res => {
+                userCompanies = res.userCompanies || [];
+                updateClientNameDropdown();
+            })
+            .catch(() => {});
+        }
+
+        function updateClientNameDropdown() {
+            const area = document.getElementById('clientNameDropdownArea');
+            const sel = document.getElementById('clientNameDropdown');
+            // 全フォーマットの現場を表示
+            const filtered = userCompanies.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+            while (sel.firstChild) sel.removeChild(sel.firstChild);
+            filtered.forEach(uc => {
+                const opt = document.createElement('option');
+                opt.value = uc.id;
+                opt.textContent = `${uc.client_name}（フォーマット${uc.format_type}）`;
+                sel.appendChild(opt);
+            });
+            area.style.display = filtered.length > 0 ? 'block' : 'none';
+        }
+
+        function getSelectedUserCompanyId() {
+            return document.getElementById('clientNameDropdown').value || null;
+        }
 
         // 登録済み経費を読み込んで表示
         function loadSavedExpenses() {
@@ -237,6 +275,7 @@
                 currentUserId = profile.userId;
                 document.getElementById('userInfo').textContent = `ログイン中: ${profile.displayName}`;
                 loadSavedExpenses();
+                loadUserCompanies(profile.userId);
             })
             .catch(err => {
                 document.getElementById('userInfo').textContent = "ユーザー情報取得失敗";
@@ -255,7 +294,7 @@
                 const amount = block.querySelector(`[name="amount_${idx}"]`).value;
                 const category = block.querySelector(`[name="category_${idx}"]`).value;
                 const comment = block.querySelector(`[name="comment_${idx}"]`).value;
-                if (amount) expenses.push({ amount, category, comment });
+                if (amount) expenses.push({ amount, category, comment, userCompanyId: getSelectedUserCompanyId() });
             });
 
             if (expenses.length === 0) { alert("金額を入力してください。"); return; }
