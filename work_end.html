@@ -53,6 +53,10 @@
         <button type="button" id="tabB" onclick="selectTab('B')">フォーマットB</button>
     </div>
     <select id="dateSelect"></select>
+    <div id="todayLogs" style="display:none;">
+        <h3>本日の入力済みデータ</h3>
+        <div id="todayLogsList"></div>
+    </div>
     <div id="statusMsg"></div>
     <div id="loader">送信中...</div>
 
@@ -94,11 +98,6 @@
         <button type="button" id="editBtn">✏️ 修正する</button>
         <button type="button" id="addNewBtn">＋ 新規追加</button>
     </form>
-
-    <div id="todayLogs" style="display:none;">
-        <h3>本日の入力済みデータ</h3>
-        <div id="todayLogsList"></div>
-    </div>
 
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>

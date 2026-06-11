@@ -51,6 +51,10 @@
       <select id="clientNameDropdown"></select>
     </div>
     <select id="dateSelect"></select>
+    <div id="todayLogs" style="display:none;">
+        <h3>本日の入力済みデータ</h3>
+        <div id="todayLogsList"></div>
+    </div>
     <div id="statusMsg"></div>
     <div id="successMsg">✅ 業務開始を登録しました</div>
     <div id="loader">送信中...</div>
@@ -96,11 +100,6 @@
         <button type="submit" id="submitBtn" disabled>業務開始を送信</button>
         <button type="button" id="editBtn">✏️ 内容を修正する</button>
     </form>
-
-    <div id="todayLogs" style="display:none;">
-        <h3>本日の入力済みデータ</h3>
-        <div id="todayLogsList"></div>
-    </div>
 
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
