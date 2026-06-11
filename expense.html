@@ -52,13 +52,15 @@
       <select id="clientNameDropdown" style="width:100%; padding:10px; border-radius:6px; border:1px solid #7b52d3; background:#fff; font-size:15px; font-weight:bold; color:#7b52d3;">
       </select>
     </div>
-    <div id="loader">処理中...</div>
+    <select id="dateSelect" style="width:100%; padding:10px; border-radius:6px; border:1px solid #7b52d3; background:#fff; font-size:15px; font-weight:bold; color:#7b52d3; margin-bottom:15px;"></select>
 
     <!-- 登録済み経費一覧 -->
     <div id="savedSection" style="display:none;">
         <h3>📋 本日の登録済み経費</h3>
         <div id="savedList"></div>
     </div>
+
+    <div id="loader">処理中...</div>
 
     <!-- 新規追加フォーム -->
     <form id="expenseForm">
@@ -94,6 +96,32 @@
         let blockCount = 0;
         let editingRow = null;
         let userCompanies = [];
+
+        function jstDateStr(offsetDays) {
+            const d = new Date(Date.now() + 9 * 60 * 60 * 1000 - offsetDays * 24 * 60 * 60 * 1000);
+            return d.toISOString().slice(0, 10);
+        }
+
+        function buildDateSelector() {
+            const sel = document.getElementById('dateSelect');
+            const labels = ['今日', '昨日', '2日前', '3日前', '4日前', '5日前', '6日前'];
+            for (let i = 0; i < 7; i++) {
+                const val = jstDateStr(i);
+                const [, mm, dd] = val.split('-');
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = `${labels[i]}（${Number(mm)}/${Number(dd)}）`;
+                sel.appendChild(opt);
+            }
+        }
+
+        function getSelectedDate() {
+            return document.getElementById('dateSelect').value;
+        }
+
+        document.getElementById('dateSelect').addEventListener('change', function() {
+            if (currentUserId) loadSavedExpenses();
+        });
 
         function loadUserCompanies(userId) {
             fetch(GAS_URL, {
@@ -131,7 +159,7 @@
         function loadSavedExpenses() {
             fetch(GAS_URL, {
                 method: 'POST',
-                body: JSON.stringify({ type: "expense_list", userId: currentUserId })
+                body: JSON.stringify({ type: "expense_list", userId: currentUserId, date: getSelectedDate() })
             })
             .then(res => res.json())
             .then(result => {
@@ -274,6 +302,7 @@
                 if (!profile) return;
                 currentUserId = profile.userId;
                 document.getElementById('userInfo').textContent = `ログイン中: ${profile.displayName}`;
+                buildDateSelector();
                 loadSavedExpenses();
                 loadUserCompanies(profile.userId);
             })
@@ -294,7 +323,7 @@
                 const amount = block.querySelector(`[name="amount_${idx}"]`).value;
                 const category = block.querySelector(`[name="category_${idx}"]`).value;
                 const comment = block.querySelector(`[name="comment_${idx}"]`).value;
-                if (amount) expenses.push({ amount, category, comment, userCompanyId: getSelectedUserCompanyId() });
+                if (amount) expenses.push({ amount, category, comment, userCompanyId: getSelectedUserCompanyId(), date: getSelectedDate() });
             });
 
             if (expenses.length === 0) { alert("金額を入力してください。"); return; }
