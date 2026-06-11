@@ -157,9 +157,10 @@
 
         // 登録済み経費を読み込んで表示
         function loadSavedExpenses() {
+            if (!currentUserId) return;
             fetch(GAS_URL, {
                 method: 'POST',
-                body: JSON.stringify({ type: "expense_list", userId: currentUserId, date: getSelectedDate() })
+                body: JSON.stringify({ type: "expense_list", userId: currentUserId, date: getSelectedDate(), userCompanyId: getSelectedUserCompanyId() })
             })
             .then(res => res.json())
             .then(result => {
