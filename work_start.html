@@ -94,7 +94,9 @@
         </section>
         <section>
             <h3>備考</h3>
-            <textarea name="notes" placeholder="任意入力"></textarea>
+            <textarea name="notes" id="notes" placeholder="任意入力（20文字以内）" maxlength="20"></textarea>
+            <div id="notesCount" style="text-align:right; font-size:12px; color:#888; margin-top:4px;">0/20文字</div>
+            <div id="notesError" style="color:#e05c2a; font-size:12px; display:none;">20文字以内で入力してください</div>
         </section>
         <input type="hidden" name="editRow" id="editRow" value="">
         <button type="submit" id="submitBtn" disabled>業務開始を送信</button>
@@ -349,6 +351,18 @@
             const mm = String(now.getMinutes()).padStart(2, '0');
             document.getElementById('startTime').value = `${hh}:${mm}`;
         }
+
+        document.getElementById('notes').addEventListener('input', function() {
+            const len = this.value.length;
+            document.getElementById('notesCount').textContent = `${len}/20文字`;
+            if (len >= 20) {
+                document.getElementById('notesCount').style.color = '#e05c2a';
+                document.getElementById('notesError').style.display = 'block';
+            } else {
+                document.getElementById('notesCount').style.color = '#888';
+                document.getElementById('notesError').style.display = 'none';
+            }
+        });
 
         function showStatus(msg, type) {
             const el = document.getElementById('statusMsg');
