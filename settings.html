@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>設定</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f0f4f8; color: #333; }
+        #userInfo { background: #e8f0fe; border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; font-size: 14px; }
+        section { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h3 { border-left: 5px solid #4a90d9; padding-left: 10px; margin-top: 0; font-size: 16px; margin-bottom: 12px; }
+        h4 { font-size: 14px; color: #4a90d9; margin: 12px 0 8px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #888; font-size: 13px; flex: 1; }
+        .info-value { font-weight: bold; flex: 1; text-align: right; }
+        .company-code { font-family: monospace; font-size: 18px; font-weight: bold; color: #4a90d9; text-align: center; padding: 10px; background: #f0f4ff; border-radius: 6px; margin-top: 8px; letter-spacing: 2px; }
+        .format-badge { display: inline-block; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 10px; background: #e8f0fe; color: #4a90d9; margin-bottom: 6px; }
+        .contact-row { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; gap: 10px; }
+        .contact-row:last-child { border-bottom: none; }
+        .contact-label { color: #888; font-size: 13px; width: 100px; flex-shrink: 0; }
+        .contact-tel { font-weight: bold; font-size: 15px; color: #e05c2a; }
+        .contact-tel a { color: #e05c2a; text-decoration: none; }
+        #loader { text-align: center; padding: 30px; color: #888; }
+        .setting-card { margin-bottom: 12px; padding: 12px; border: 1px solid #eee; border-radius: 8px; }
+        .no-contact { color: #bbb; font-size: 13px; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div id="userInfo">読み込み中...</div>
+    <div id="loader">設定を読み込み中...</div>
+    <div id="content" style="display:none;"></div>
+
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+        const LIFF_ID = "2009986845-QrA6kIHc"; // 要変更
+        const GAS_URL = "https://kantan-geppo.peaks-y-seitoh.workers.dev/api";
+
+        liff.init({ liffId: LIFF_ID })
+            .then(() => {
+                if (!liff.isLoggedIn()) { liff.login(); return; }
+                return liff.getProfile();
+            })
+            .then(profile => {
+                if (!profile) return;
+                document.getElementById('userInfo').textContent = `ログイン中: ${profile.displayName}`;
+                return fetch(GAS_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ type: 'get_settings', userId: profile.userId })
+                });
+            })
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('loader').style.display = 'none';
+                if (!data.success) {
+                    document.getElementById('content').innerHTML = '<p style="color:red;">設定の読み込みに失敗しました。</p>';
+                    document.getElementById('content').style.display = 'block';
+                    return;
+                }
+                renderContent(data);
+            })
+            .catch(err => {
+                document.getElementById('loader').style.display = 'none';
+                console.error(err);
+            });
+
+        function renderContent(data) {
+            const content = document.getElementById('content');
+            let html = '';
+
+            // 企業コード
+            html += `
+                <section>
+                    <h3>企業コード</h3>
+                    <p style="font-size:13px; color:#888; margin-bottom:8px;">ドライバー登録時に使用するコードです</p>
+                    <div class="company-code">${data.companyCode ?? '未設定'}</div>
+                </section>
+            `;
+
+            // 現場ごとの設定
+            if (data.settings && data.settings.length > 0) {
+                html += '<section><h3>現場別設定</h3>';
+
+                data.settings.forEach(s => {
+                    const formatName = s.format_type === 'B' ? (data.formatBName || 'フォーマットB') : (data.formatAName || 'フォーマットA');
+                    const clientName = s.client_name || formatName;
+                    html += `<div class="setting-card">`;
+                    html += `<span class="format-badge">${formatName}</span>`;
+                    html += `<div style="font-weight:bold; margin-bottom:8px;">${clientName}</div>`;
+
+                    // 条件設定
+                    const rows = [];
+                    if (s.closing_day != null) rows.push(['締め日', s.closing_day === 0 ? '末日' : `${s.closing_day}日`]);
+                    if (s.work_start_time) rows.push(['稼働開始', s.work_start_time]);
+                    if (s.work_end_time) rows.push(['稼働終了', s.work_end_time]);
+                    if (s.overtime_unit) rows.push(['時間超過単位', `${s.overtime_unit}分`]);
+                    if (s.distance_limit) rows.push(['距離超過条件', `${s.distance_limit}km以上`]);
+
+                    if (rows.length > 0) {
+                        rows.forEach(([label, value]) => {
+                            html += `<div class="info-row"><span class="info-label">${label}</span><span class="info-value">${value}</span></div>`;
+                        });
+                    }
+
+                    // 緊急連絡先
+                    const contacts = [
+                        [s.emergency_contact_1_label, s.emergency_contact_1_tel],
+                        [s.emergency_contact_2_label, s.emergency_contact_2_tel],
+                        [s.emergency_contact_3_label, s.emergency_contact_3_tel],
+                    ].filter(([, tel]) => tel);
+
+                    if (contacts.length > 0) {
+                        html += `<h4>緊急連絡先</h4>`;
+                        contacts.forEach(([label, tel]) => {
+                            html += `<div class="contact-row">
+                                <span class="contact-label">${label || '連絡先'}</span>
+                                <span class="contact-tel"><a href="tel:${tel}">${tel}</a></span>
+                            </div>`;
+                        });
+                    }
+
+                    html += `</div>`;
+                });
+
+                html += '</section>';
+            }
+
+            content.innerHTML = html;
+            content.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
