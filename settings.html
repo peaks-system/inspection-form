@@ -24,12 +24,20 @@
         #loader { text-align: center; padding: 30px; color: #888; }
         .setting-card { margin-bottom: 12px; padding: 12px; border: 1px solid #eee; border-radius: 8px; }
         .no-contact { color: #bbb; font-size: 13px; font-style: italic; }
+        #shareSection { display: none; }
+        .share-btn { display: block; width: 100%; padding: 14px; background: #06c755; color: white; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; text-align: center; }
+        .share-btn:active { background: #05a847; }
     </style>
 </head>
 <body>
     <div id="userInfo">読み込み中...</div>
     <div id="loader">設定を読み込み中...</div>
     <div id="content" style="display:none;"></div>
+    <section id="shareSection">
+        <h3>友だちに紹介する</h3>
+        <p style="font-size:13px; color:#888; margin-bottom:12px;">かんたん月報を友だちにシェアしましょう</p>
+        <button class="share-btn" id="shareBtn">友だちに紹介する</button>
+    </section>
 
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
@@ -58,11 +66,25 @@
                     return;
                 }
                 renderContent(data);
+                initShareButton();
             })
             .catch(err => {
                 document.getElementById('loader').style.display = 'none';
                 console.error(err);
             });
+
+        function initShareButton() {
+            if (!liff.isApiAvailable('shareTargetPicker')) return;
+            document.getElementById('shareSection').style.display = 'block';
+            document.getElementById('shareBtn').addEventListener('click', function() {
+                liff.shareTargetPicker([{
+                    type: 'text',
+                    text: 'かんたん月報、LINEで日報・月報が簡単に作れます！\n友だち追加はこちら→https://lin.ee/rB627D0'
+                }]).catch(function(err) {
+                    console.error('shareTargetPicker error', err);
+                });
+            });
+        }
 
         function renderContent(data) {
             const content = document.getElementById('content');
