@@ -27,6 +27,8 @@
         #shareSection { display: none; }
         .share-btn { display: block; width: 100%; padding: 14px; background: #06c755; color: white; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; text-align: center; }
         .share-btn:active { background: #05a847; }
+        .btn-admin { display: block; width: 100%; padding: 12px; border: none; border-radius: 8px; background: #4a90d9; color: white; font-size: 15px; font-weight: bold; text-align: center; text-decoration: none; cursor: pointer; margin-top: 4px; }
+        .btn-admin:active { background: #357abd; }
     </style>
 </head>
 <body>
@@ -43,6 +45,7 @@
     <script>
         const LIFF_ID = "2009986845-QrA6kIHc"; // 要変更
         const GAS_URL = "https://kantan-geppo.peaks-y-seitoh.workers.dev/api";
+        let lineUserId = '';
 
         liff.init({ liffId: LIFF_ID })
             .then(() => {
@@ -51,6 +54,7 @@
             })
             .then(profile => {
                 if (!profile) return;
+                lineUserId = profile.userId;
                 document.getElementById('userInfo').textContent = `ログイン中: ${profile.displayName}`;
                 return fetch(GAS_URL, {
                     method: 'POST',
@@ -146,6 +150,16 @@
 
                 html += '</section>';
             }
+
+            // 管理画面登録ボタン
+            const adminUrl = `https://kantan-geppo-admin.pages.dev/signup?lineUserId=${encodeURIComponent(lineUserId)}`;
+            html += `
+                <section>
+                    <h3>管理画面</h3>
+                    <p style="font-size:13px; color:#888; margin-bottom:10px;">メールアドレスとパスワードを設定して、PC・スマートフォンから管理画面にアクセスできます。</p>
+                    <a href="${adminUrl}" target="_blank" rel="noopener noreferrer" class="btn-admin">管理画面を使う</a>
+                </section>
+            `;
 
             content.innerHTML = html;
             content.style.display = 'block';
