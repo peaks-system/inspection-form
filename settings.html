@@ -151,15 +151,17 @@
                 html += '</section>';
             }
 
-            // 管理画面登録ボタン
-            const adminUrl = `https://kantan-geppo-admin.pages.dev/signup?lineUserId=${encodeURIComponent(lineUserId)}`;
-            html += `
-                <section>
-                    <h3>管理画面</h3>
-                    <p style="font-size:13px; color:#888; margin-bottom:10px;">メールアドレスとパスワードを設定して、PC・スマートフォンから管理画面にアクセスできます。</p>
-                    <a href="${adminUrl}" target="_blank" rel="noopener noreferrer" class="btn-admin">管理画面を使う</a>
-                </section>
-            `;
+            // 管理画面登録ボタン（individualのみ表示）
+            if (data.accountType === 'individual') {
+                const adminUrl = `https://kantan-geppo-admin.pages.dev/signup?lineUserId=${encodeURIComponent(lineUserId)}`;
+                html += `
+                    <section>
+                        <h3>管理画面</h3>
+                        <p style="font-size:13px; color:#888; margin-bottom:10px;">メールアドレスとパスワードを設定して、PC・スマートフォンから管理画面にアクセスできます。</p>
+                        <a href="${adminUrl}" target="_blank" rel="noopener noreferrer" class="btn-admin">管理画面を使う</a>
+                    </section>
+                `;
+            }
 
             content.innerHTML = html;
             content.style.display = 'block';
