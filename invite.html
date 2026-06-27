@@ -15,6 +15,13 @@
         .status-error { color: #e05c2a; }
         .spinner { display: inline-block; width: 36px; height: 36px; border: 4px solid #e0e0e0; border-top-color: #4a90d9; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .btn-primary { display: block; width: 100%; padding: 12px; background: #06c755; color: white; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; margin-top: 16px; }
+        .btn-primary:active { background: #05a847; }
+        .btn-primary:disabled { opacity: 0.5; cursor: default; }
+        .btn-secondary { display: block; width: 100%; padding: 12px; background: #e8e8e8; color: #555; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; margin-top: 8px; }
+        .btn-secondary:active { background: #d0d0d0; }
+        .btn-secondary:disabled { opacity: 0.5; cursor: default; }
+        .warning-box { background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: 12px; margin: 12px 0 0; text-align: left; font-size: 13px; color: #795548; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -26,34 +33,107 @@
 
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
-        const LIFF_ID = "2009986845-UC3gzTft";
-        const API_URL = "https://kantan-geppo.peaks-y-seitoh.workers.dev/api/link-driver";
+        var LIFF_ID = "2009986845-UC3gzTft";
+        var API_URL = "https://kantan-geppo.peaks-y-seitoh.workers.dev/api/link-driver";
+        var CHECK_URL = "https://kantan-geppo.peaks-y-seitoh.workers.dev/api/link-driver/check";
+
+        function clearButtons() {
+            document.querySelectorAll('.btn-primary, .btn-secondary, .warning-box').forEach(function (el) { el.remove(); });
+        }
 
         function showError(msg) {
             document.getElementById('spinner').style.display = 'none';
-            document.getElementById('card').insertAdjacentHTML('afterbegin', '<div class="icon">❌</div>');
+            if (!document.querySelector('.icon')) {
+                document.getElementById('card').insertAdjacentHTML('afterbegin', '<div class="icon">❌</div>');
+            }
             document.getElementById('title').textContent = 'エラーが発生しました';
             document.getElementById('title').className = 'status-error';
             document.getElementById('message').textContent = msg;
+            clearButtons();
         }
 
         function showSuccess() {
             document.getElementById('spinner').style.display = 'none';
-            document.getElementById('card').insertAdjacentHTML('afterbegin', '<div class="icon">✅</div>');
+            if (!document.querySelector('.icon')) {
+                document.getElementById('card').insertAdjacentHTML('afterbegin', '<div class="icon">✅</div>');
+            }
             document.getElementById('title').textContent = '連携が完了しました';
             document.getElementById('title').className = 'status-success';
             document.getElementById('message').textContent = 'LINEに戻ってご利用ください。';
+            clearButtons();
+        }
+
+        function showConfirm(companyName, isExistingUser, inviteDriverId, userId, displayName) {
+            document.getElementById('spinner').style.display = 'none';
+            document.getElementById('title').textContent = '連携の確認';
+            document.getElementById('title').className = '';
+            document.getElementById('message').textContent = companyName + 'と連携しますか？';
+
+            var card = document.getElementById('card');
+
+            if (isExistingUser) {
+                var warning = document.createElement('div');
+                warning.className = 'warning-box';
+                warning.textContent = 'これまでの月報データは連携後に削除されます。必要な場合は連携前にダウンロードしてください。';
+                card.appendChild(warning);
+            }
+
+            var btnYes = document.createElement('button');
+            btnYes.className = 'btn-primary';
+            btnYes.textContent = 'はい';
+
+            var btnNo = document.createElement('button');
+            btnNo.className = 'btn-secondary';
+            btnNo.textContent = 'いいえ';
+
+            btnYes.addEventListener('click', function () {
+                btnYes.disabled = true;
+                btnNo.disabled = true;
+                document.getElementById('spinner').style.display = 'inline-block';
+                document.getElementById('title').textContent = '連携処理中...';
+                document.getElementById('title').className = 'status-processing';
+                document.getElementById('message').textContent = 'しばらくお待ちください。';
+                clearButtons();
+
+                fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ inviteDriverId: inviteDriverId, userId: userId, displayName: displayName })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.success) {
+                            showSuccess();
+                        } else {
+                            showError(data.error || '連携に失敗しました。');
+                        }
+                    })
+                    .catch(function (err) {
+                        console.error(err);
+                        showError('通信エラーが発生しました。\nしばらくしてから再度お試しください。');
+                    });
+            });
+
+            btnNo.addEventListener('click', function () {
+                clearButtons();
+                document.getElementById('title').textContent = 'キャンセルしました';
+                document.getElementById('title').className = '';
+                document.getElementById('message').textContent = '連携をキャンセルしました。';
+            });
+
+            card.appendChild(btnYes);
+            card.appendChild(btnNo);
         }
 
         liff.init({ liffId: LIFF_ID })
-            .then(() => {
-                const params = new URLSearchParams(window.location.search);
-                let inviteDriverId = params.get('inviteDriverId');
+            .then(function () {
+                var params = new URLSearchParams(window.location.search);
+                var inviteDriverId = params.get('inviteDriverId');
 
                 if (!inviteDriverId) {
-                    const liffState = params.get('liff.state');
+                    var liffState = params.get('liff.state');
                     if (liffState) {
-                        const stateParams = new URLSearchParams(liffState);
+                        var stateParams = new URLSearchParams(liffState);
                         inviteDriverId = stateParams.get('inviteDriverId');
                     }
                 }
@@ -68,34 +148,35 @@
                     return null;
                 }
 
-                return liff.getProfile().then((profile) => ({ profile, inviteDriverId }));
-            })
-            .then((result) => {
-                if (!result) return null;
-                const { profile, inviteDriverId } = result;
-                return fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        inviteDriverId: inviteDriverId,
-                        userId: profile.userId,
-                        displayName: profile.displayName
-                    })
+                return liff.getProfile().then(function (profile) {
+                    return { profile: profile, inviteDriverId: inviteDriverId };
                 });
             })
-            .then((response) => {
-                if (!response) return null;
-                return response.json();
+            .then(function (result) {
+                if (!result) return null;
+                var profile = result.profile;
+                var inviteDriverId = result.inviteDriverId;
+                var checkUrl = CHECK_URL
+                    + '?inviteDriverId=' + encodeURIComponent(inviteDriverId)
+                    + '&userId=' + encodeURIComponent(profile.userId);
+                return fetch(checkUrl)
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        return { data: data, profile: profile, inviteDriverId: inviteDriverId };
+                    });
             })
-            .then((data) => {
-                if (!data) return;
-                if (data.success) {
-                    showSuccess();
-                } else {
-                    showError(data.error || '連携に失敗しました。');
+            .then(function (result) {
+                if (!result) return;
+                var data = result.data;
+                var profile = result.profile;
+                var inviteDriverId = result.inviteDriverId;
+                if (!data.success) {
+                    showError(data.error || '連携の確認に失敗しました。');
+                    return;
                 }
+                showConfirm(data.companyName, data.isExistingUser, inviteDriverId, profile.userId, profile.displayName);
             })
-            .catch((err) => {
+            .catch(function (err) {
                 console.error(err);
                 showError('通信エラーが発生しました。\nしばらくしてから再度お試しください。');
             });
