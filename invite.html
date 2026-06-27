@@ -45,51 +45,60 @@
             document.getElementById('message').textContent = 'LINEに戻ってご利用ください。';
         }
 
-        const params = new URLSearchParams(window.location.search);
-        const inviteDriverId = params.get('inviteDriverId');
+        liff.init({ liffId: LIFF_ID })
+            .then(() => {
+                const params = new URLSearchParams(window.location.search);
+                let inviteDriverId = params.get('inviteDriverId');
 
-        if (!inviteDriverId) {
-            liff.init({ liffId: LIFF_ID }).catch(() => {}).finally(() => {
-                showError('招待リンクが正しくありません。\n管理者にご確認ください。');
-            });
-        } else {
-            liff.init({ liffId: LIFF_ID })
-                .then(() => {
-                    if (!liff.isLoggedIn()) {
-                        liff.login();
-                        return null;
+                if (!inviteDriverId) {
+                    const liffState = params.get('liff.state');
+                    if (liffState) {
+                        const stateParams = new URLSearchParams(liffState);
+                        inviteDriverId = stateParams.get('inviteDriverId');
                     }
-                    return liff.getProfile();
-                })
-                .then((profile) => {
-                    if (!profile) return null;
-                    return fetch(API_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            inviteDriverId: inviteDriverId,
-                            userId: profile.userId,
-                            displayName: profile.displayName
-                        })
-                    });
-                })
-                .then((response) => {
-                    if (!response) return null;
-                    return response.json();
-                })
-                .then((data) => {
-                    if (!data) return;
-                    if (data.success) {
-                        showSuccess();
-                    } else {
-                        showError(data.error || '連携に失敗しました。');
-                    }
-                })
-                .catch((err) => {
-                    console.error(err);
-                    showError('通信エラーが発生しました。\nしばらくしてから再度お試しください。');
+                }
+
+                if (!inviteDriverId) {
+                    showError('招待リンクが正しくありません。\n管理者にご確認ください。');
+                    return null;
+                }
+
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return null;
+                }
+
+                return liff.getProfile().then((profile) => ({ profile, inviteDriverId }));
+            })
+            .then((result) => {
+                if (!result) return null;
+                const { profile, inviteDriverId } = result;
+                return fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        inviteDriverId: inviteDriverId,
+                        userId: profile.userId,
+                        displayName: profile.displayName
+                    })
                 });
-        }
+            })
+            .then((response) => {
+                if (!response) return null;
+                return response.json();
+            })
+            .then((data) => {
+                if (!data) return;
+                if (data.success) {
+                    showSuccess();
+                } else {
+                    showError(data.error || '連携に失敗しました。');
+                }
+            })
+            .catch((err) => {
+                console.error(err);
+                showError('通信エラーが発生しました。\nしばらくしてから再度お試しください。');
+            });
     </script>
 </body>
 </html>
