@@ -38,6 +38,8 @@
         .badge-ongoing { display: inline-block; background: #ffc107; color: white; font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
         .edit-log-btn  { flex-shrink: 0; background: none; border: 1px solid #4a90d9; color: #4a90d9; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; width: auto; margin: 0; }
         .del-log-btn   { flex-shrink: 0; background: none; border: 1px solid #dc3545; color: #dc3545; padding: 5px 8px;  border-radius: 4px; font-size: 12px; cursor: pointer; width: auto; margin: 0 0 0 4px; }
+        .log-card-selected { border: 2px solid #4a90d9; background: #eef3ff; box-shadow: 0 2px 8px rgba(74,144,217,0.25); }
+        #selectedJobLabel { font-size: 13px; color: #4a90d9; background: #eef3ff; border-left: 3px solid #4a90d9; padding: 5px 10px; margin: -5px 0 12px; border-radius: 0 4px 4px 0; display: none; }
     </style>
 </head>
 <body>
@@ -72,6 +74,7 @@
         </section>
         <section>
             <h3>業務開始情報</h3>
+            <p id="selectedJobLabel"></p>
             <div class="item">
                 <label>開始時刻</label>
                 <input type="time" name="startTime" id="startTime">
@@ -115,6 +118,7 @@
         let tabBName = 'フォーマットB';
         let inspectionBlocked = false;
         let userCompanies = [];
+        let selectedLogId = null;
 
         function loadUserCompanies(userId) {
           fetch(GAS_URL, {
@@ -242,6 +246,7 @@
             logs.forEach(function(log) {
                 const card = document.createElement('div');
                 card.className = 'log-card';
+                card.dataset.logId = log.id;
 
                 const textDiv = document.createElement('div');
                 textDiv.className = 'log-card-text';
@@ -318,7 +323,19 @@
             document.getElementById('submitBtn').disabled = false;
             document.getElementById('submitBtn').textContent = '修正内容を保存';
             document.getElementById('statusMsg').style.display = 'none';
+            const displayName = log.client_name || (log.format_type === 'B' ? tabBName : tabAName);
+            const jobLabel = document.getElementById('selectedJobLabel');
+            jobLabel.textContent = `[${displayName}] の開始情報を修正しています`;
+            jobLabel.style.display = 'block';
+            highlightSelectedCard(log.id);
             window.scrollTo(0, 0);
+        }
+
+        function highlightSelectedCard(logId) {
+            selectedLogId = logId;
+            document.querySelectorAll('.log-card').forEach(function(c) {
+                c.classList.toggle('log-card-selected', logId != null && c.dataset.logId == logId);
+            });
         }
 
         // JST で offset 日前の日付文字列 (yyyy-mm-dd) を返す
@@ -377,6 +394,8 @@
             document.getElementById('submitBtn').disabled = true;
             document.getElementById('submitBtn').textContent = '業務開始を送信';
             document.getElementById('editBtn').style.display = 'none';
+            document.getElementById('selectedJobLabel').style.display = 'none';
+            highlightSelectedCard(null);
             todayLogs = [];
             renderTodayLogs([]);
             document.getElementById('statusMsg').style.display = 'none';

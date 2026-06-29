@@ -43,6 +43,9 @@
         .modal-btns button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
         #modalSaveBtn { background: #7b52d3; color: white; }
         #modalCancelBtn { background: #eee; color: #555; }
+        .saved-item-selected { background: #f0ebff; outline: 2px solid #7b52d3; border-radius: 4px; }
+        #modalClientLabel { font-size: 13px; color: #7b52d3; background: #f0ebff; border-left: 3px solid #7b52d3; padding: 5px 10px; margin: -10px 0 12px; border-radius: 0 4px 4px 0; display: none; }
+        #expenseFormLabel { font-size: 13px; color: #7b52d3; background: #f0ebff; border-left: 3px solid #7b52d3; padding: 5px 10px; margin: 0 0 10px; border-radius: 0 4px 4px 0; display: none; }
     </style>
 </head>
 <body>
@@ -63,6 +66,7 @@
     <div id="loader">処理中...</div>
 
     <!-- 新規追加フォーム -->
+    <p id="expenseFormLabel"></p>
     <form id="expenseForm">
         <div id="expenseList"></div>
         <button type="button" id="addBtn">＋ 経費を追加</button>
@@ -73,6 +77,7 @@
     <div id="editModal">
         <div id="editModalInner">
             <h3>✏️ 経費を修正</h3>
+            <p id="modalClientLabel"></p>
             <select id="modalCategory">
                 <option value="駐車">駐車</option>
                 <option value="高速">高速</option>
@@ -96,6 +101,32 @@
         let blockCount = 0;
         let editingRow = null;
         let userCompanies = [];
+        let selectedExpenseRow = null;
+
+        function getClientDisplayName() {
+            const selId = document.getElementById('clientNameDropdown').value;
+            const uc = userCompanies.find(u => String(u.id) === String(selId));
+            if (!uc) return '';
+            return uc.client_name || `フォーマット${uc.format_type}`;
+        }
+
+        function highlightSelectedExpense(row) {
+            selectedExpenseRow = row;
+            document.querySelectorAll('.saved-item').forEach(function(el) {
+                el.classList.toggle('saved-item-selected', row != null && el.dataset.expenseRow == row);
+            });
+        }
+
+        function updateExpenseFormLabel() {
+            const name = getClientDisplayName();
+            const label = document.getElementById('expenseFormLabel');
+            if (name) {
+                label.textContent = `[${name}] の経費情報を入力しています`;
+                label.style.display = 'block';
+            } else {
+                label.style.display = 'none';
+            }
+        }
 
         function jstDateStr(offsetDays) {
             const d = new Date(Date.now() + 9 * 60 * 60 * 1000 - offsetDays * 24 * 60 * 60 * 1000);
@@ -125,6 +156,7 @@
 
         document.getElementById('clientNameDropdown').addEventListener('change', function() {
             if (currentUserId) loadSavedExpenses();
+            updateExpenseFormLabel();
         });
 
         function loadUserCompanies(userId) {
@@ -158,6 +190,7 @@
                 sel.appendChild(opt);
             });
             area.style.display = filtered.length > 0 ? 'block' : 'none';
+            updateExpenseFormLabel();
         }
 
         function getSelectedUserCompanyId() {
@@ -183,6 +216,7 @@
                 result.expenses.forEach(exp => {
                     const div = document.createElement('div');
                     div.className = 'saved-item';
+                    div.dataset.expenseRow = exp.row;
                     div.innerHTML = `
                         <div class="saved-info">
                             <div class="amount">¥${Number(exp.amount).toLocaleString()}</div>
@@ -231,11 +265,22 @@
             document.getElementById('modalCategory').value = category;
             document.getElementById('modalAmount').value = amount;
             document.getElementById('modalComment').value = comment;
+            const name = getClientDisplayName();
+            const modalLabel = document.getElementById('modalClientLabel');
+            if (name) {
+                modalLabel.textContent = `[${name}] の経費情報を修正しています`;
+                modalLabel.style.display = 'block';
+            } else {
+                modalLabel.style.display = 'none';
+            }
+            highlightSelectedExpense(row);
             document.getElementById('editModal').style.display = 'block';
         }
 
         document.getElementById('modalCancelBtn').addEventListener('click', function() {
             document.getElementById('editModal').style.display = 'none';
+            document.getElementById('modalClientLabel').style.display = 'none';
+            highlightSelectedExpense(null);
             editingRow = null;
         });
 
@@ -257,6 +302,8 @@
             .then(result => {
                 if (result.success) {
                     document.getElementById('editModal').style.display = 'none';
+                    document.getElementById('modalClientLabel').style.display = 'none';
+                    highlightSelectedExpense(null);
                     editingRow = null;
                     loadSavedExpenses();
                 } else {

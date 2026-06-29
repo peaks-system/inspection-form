@@ -44,6 +44,8 @@
         .edit-log-btn  { flex-shrink: 0; background: none; border: 1px solid #e05c2a; color: #e05c2a; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; width: auto; margin: 0; }
         .end-log-btn   { flex-shrink: 0; background: #e05c2a; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; width: auto; margin: 0; font-weight: bold; }
         .del-log-btn   { flex-shrink: 0; background: none; border: 1px solid #dc3545; color: #dc3545; padding: 5px 8px;  border-radius: 4px; font-size: 12px; cursor: pointer; width: auto; margin: 0 0 0 4px; }
+        .log-card-selected { border: 2px solid #e05c2a; background: #fff4f0; box-shadow: 0 2px 8px rgba(224,92,42,0.25); }
+        #selectedJobLabel { font-size: 13px; color: #e05c2a; background: #fff4f0; border-left: 3px solid #e05c2a; padding: 5px 10px; margin: -5px 0 12px; border-radius: 0 4px 4px 0; display: none; }
     </style>
 </head>
 <body>
@@ -63,6 +65,7 @@
     <form id="workEndForm">
         <section>
             <h3>業務終了情報</h3>
+            <p id="selectedJobLabel"></p>
             <div class="item">
                 <label>終了時刻</label>
                 <input type="time" name="endTime" id="endTime">
@@ -113,6 +116,7 @@
         let tabAName = 'フォーマットA';
         let tabBName = 'フォーマットB';
         let workStartBlocked = false;
+        let selectedLogId = null;
 
         function initTabs(aName, bName) {
             tabAName = aName; tabBName = bName;
@@ -203,6 +207,7 @@
             logs.forEach(function(log) {
                 const card = document.createElement('div');
                 card.className = 'log-card';
+                card.dataset.logId = log.id;
 
                 const textDiv = document.createElement('div');
                 textDiv.className = 'log-card-text';
@@ -284,7 +289,20 @@
             document.getElementById('submitBtn').disabled = false;
             document.getElementById('submitBtn').textContent = log.end_time ? '修正内容を保存' : '業務終了を登録';
             document.getElementById('statusMsg').style.display = 'none';
+            const displayName = log.client_name || (log.format_type === 'B' ? tabBName : tabAName);
+            const action = log.end_time ? '終了情報を修正しています' : '終了情報を入力しています';
+            const jobLabel = document.getElementById('selectedJobLabel');
+            jobLabel.textContent = `[${displayName}] の${action}`;
+            jobLabel.style.display = 'block';
+            highlightSelectedCard(log.id);
             window.scrollTo(0, 0);
+        }
+
+        function highlightSelectedCard(logId) {
+            selectedLogId = logId;
+            document.querySelectorAll('.log-card').forEach(function(c) {
+                c.classList.toggle('log-card-selected', logId != null && c.dataset.logId == logId);
+            });
         }
 
         function selectUnit(unit) {
@@ -351,6 +369,8 @@
             document.getElementById('editBtn').style.display = 'none';
             document.getElementById('addNewBtn').style.display = 'none';
             document.getElementById('statusMsg').style.display = 'none';
+            document.getElementById('selectedJobLabel').style.display = 'none';
+            highlightSelectedCard(null);
             todayLogs = [];
             renderTodayLogs([]);
             document.getElementById('editRow').value = '';
