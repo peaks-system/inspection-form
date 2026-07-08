@@ -149,7 +149,10 @@ liff.init({ liffId: liffId }).then(() => {
     body: JSON.stringify({ type: 'status', userId: profile.userId })
   })
   .then(r => r.json())
-  .then(status => initTabs(status.formatAName || 'フォーマットA', status.formatBName || 'フォーマットB'))
+  .then(status => {
+    initTabs(status.formatAName || 'フォーマットA', status.formatBName || 'フォーマットB');
+    if (status.formatType === 'B') selectTab('B');
+  })
   .catch(() => {});
   loadUserCompanies(profile.userId);
 }).catch(err => alert("初期化失敗: " + err));
