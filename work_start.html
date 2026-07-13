@@ -119,6 +119,7 @@
         let inspectionBlocked = false;
         let userCompanies = [];
         let selectedLogId = null;
+        let notesLimit = 20;
 
         function loadUserCompanies(userId) {
           fetch(GAS_URL, {
@@ -176,6 +177,16 @@
             document.getElementById('tabA').classList.toggle('active', type === 'A');
             document.getElementById('tabB').classList.toggle('active', type === 'B');
             document.getElementById('formatBSection').style.display = type === 'B' ? 'block' : 'none';
+            notesLimit = type === 'B' ? 8 : 20;
+            const notesEl = document.getElementById('notes');
+            notesEl.maxLength = notesLimit;
+            notesEl.placeholder = `任意入力（${notesLimit}文字以内）`;
+            const len = notesEl.value.length;
+            document.getElementById('notesCount').textContent = `${len}/${notesLimit}文字`;
+            document.getElementById('notesError').textContent = `${notesLimit}文字以内で入力してください`;
+            const over = len >= notesLimit;
+            document.getElementById('notesCount').style.color = over ? '#e05c2a' : '#888';
+            document.getElementById('notesError').style.display = over ? 'block' : 'none';
             updateClientNameDropdown();
             updateButtonState();
         }
@@ -371,8 +382,8 @@
 
         document.getElementById('notes').addEventListener('input', function() {
             const len = this.value.length;
-            document.getElementById('notesCount').textContent = `${len}/20文字`;
-            if (len >= 20) {
+            document.getElementById('notesCount').textContent = `${len}/${notesLimit}文字`;
+            if (len >= notesLimit) {
                 document.getElementById('notesCount').style.color = '#e05c2a';
                 document.getElementById('notesError').style.display = 'block';
             } else {
@@ -486,6 +497,7 @@
                 setCurrentTime();
                 checkStatus(currentUserId, getSelectedDate());
                 loadUserCompanies(profile.userId);
+                selectTab('A');
             })
             .catch(err => {
                 document.getElementById('userInfo').textContent = "ユーザー情報取得失敗";
@@ -536,7 +548,7 @@
                     setCurrentTime();
                     setTimeout(() => liff.closeWindow(), 1500);
                 } else {
-                    throw new Error(result.error || "不明なエラー");
+                    throw new Error(result.message || result.error || "不明なエラー");
                 }
             })
             .catch(err => {
