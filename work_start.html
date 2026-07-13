@@ -120,6 +120,7 @@
         let userCompanies = [];
         let selectedLogId = null;
         let notesLimit = 20;
+        let isFreePlan = false;
 
         function loadUserCompanies(userId) {
           fetch(GAS_URL, {
@@ -177,7 +178,7 @@
             document.getElementById('tabA').classList.toggle('active', type === 'A');
             document.getElementById('tabB').classList.toggle('active', type === 'B');
             document.getElementById('formatBSection').style.display = type === 'B' ? 'block' : 'none';
-            notesLimit = type === 'B' ? 8 : 20;
+            notesLimit = type === 'B' && isFreePlan ? 8 : 20;
             const notesEl = document.getElementById('notes');
             notesEl.maxLength = notesLimit;
             notesEl.placeholder = `任意入力（${notesLimit}文字以内）`;
@@ -427,7 +428,9 @@
             })
             .then(res => res.json())
             .then(status => {
+                isFreePlan = status.isFreePlan ?? false;
                 initTabs(status.formatAName || 'フォーマットA', status.formatBName || 'フォーマットB');
+                selectTab(selectedFormatType);
                 // 当日のみ点検チェック
                 if (isToday && !status.inspectionDone) {
                     inspectionBlocked = true;
