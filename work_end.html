@@ -96,7 +96,7 @@
             <h3>備考</h3>
             <textarea name="notes" id="notes" placeholder="任意入力（20文字以内）" maxlength="20"></textarea>
             <div id="notesCount" style="text-align:right; font-size:12px; color:#888; margin-top:4px;">0/20文字</div>
-            <div id="notesError" style="color:#e05c2a; font-size:12px; display:none;">20文字以内で入力してください</div>
+            <div id="notesError" style="color:#888; font-size:12px; display:none;">上限に達しました（これ以上入力できません）</div>
         </section>
         <input type="hidden" name="editRow" id="editRow" value="">
         <button type="submit" id="submitBtn" disabled>業務終了を送信</button>
@@ -278,7 +278,7 @@
             document.querySelector('[name="notes"]').value = log.notes || '';
             const notesLen = (log.notes || '').length;
             document.getElementById('notesCount').textContent = `${notesLen}/20文字`;
-            document.getElementById('notesCount').style.color = notesLen >= 20 ? '#e05c2a' : '#888';
+            document.getElementById('notesCount').style.color = '#888';
             document.getElementById('notesError').style.display = notesLen >= 20 ? 'block' : 'none';
             selectUnit(log.delivery_unit || '件');
             document.getElementById('editRow').value = log.id;
@@ -314,13 +314,8 @@
         document.getElementById('notes').addEventListener('input', function() {
             const len = this.value.length;
             document.getElementById('notesCount').textContent = `${len}/20文字`;
-            if (len >= 20) {
-                document.getElementById('notesCount').style.color = '#e05c2a';
-                document.getElementById('notesError').style.display = 'block';
-            } else {
-                document.getElementById('notesCount').style.color = '#888';
-                document.getElementById('notesError').style.display = 'none';
-            }
+            document.getElementById('notesCount').style.color = '#888';
+            document.getElementById('notesError').style.display = len >= 20 ? 'block' : 'none';
         });
 
         // JST で offset 日前の日付文字列 (yyyy-mm-dd) を返す
