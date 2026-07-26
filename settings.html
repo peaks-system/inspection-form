@@ -94,10 +94,10 @@
             const content = document.getElementById('content');
             let html = '';
 
-            // 企業コード
+            // アカウントコード
             html += `
                 <section>
-                    <h3>企業コード</h3>
+                    <h3>アカウントコード</h3>
                     <p style="font-size:13px; color:#888; margin-bottom:8px;">ドライバー登録時に使用するコードです</p>
                     <div class="company-code">${data.companyCode ?? '未設定'}</div>
                 </section>
@@ -158,10 +158,19 @@
                     <section>
                         <h3>管理画面</h3>
                         <p style="font-size:13px; color:#888; margin-bottom:10px;">メールアドレスとパスワードを設定して、PC・スマートフォンから管理画面にアクセスできます。</p>
-                        <a href="${adminUrl}" target="_blank" rel="noopener noreferrer" class="btn-admin">管理画面を使う</a>
+                        <button class="btn-admin" onclick="liff.openWindow({ url: '${adminUrl}', external: true })">管理画面を使う</button>
                     </section>
                 `;
             }
+
+            // マニュアル
+            html += `
+                <section>
+                    <h3>マニュアル</h3>
+                    <p style="font-size:13px; color:#888; margin-bottom:12px;">かんたん月報の使い方はこちらをご確認ください</p>
+                    <button class="btn-admin" onclick="liff.openWindow({ url: 'https://coordinated-show-d98.notion.site/3a94ee5f5dfb8037a736e18f732e974d', external: true })">マニュアルを見る</button>
+                </section>
+            `;
 
             content.innerHTML = html;
             content.style.display = 'block';
