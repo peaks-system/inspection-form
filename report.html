@@ -15,7 +15,6 @@ select { border: 1px solid #ccc; background: #fff; margin-bottom: 20px; }
 .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
 .result-area { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px dashed #ccc; }
 .btn-share { background: #28a745; color: white; border: none; font-weight: bold; margin-bottom: 10px; cursor: pointer; width: 100%; padding: 12px; border-radius: 6px; font-size: 16px; }
-.btn-open { background: #6c757d; color: white; border: none; font-weight: bold; text-align: center; text-decoration: none; display: block; padding: 12px; border-radius: 6px; font-size: 16px; line-height: 20px; }
 .loading { display: none; text-align: center; color: #ffc107; font-weight: bold; margin: 15px 0; }
 #formatTabs { display: flex; margin-bottom: 20px; }
 #formatTabs button { flex: 1; padding: 10px; border: 1px solid #007bff; background: #fff; color: #007bff; font-size: 14px; font-weight: bold; cursor: pointer; }
@@ -50,7 +49,6 @@ select { border: 1px solid #ccc; background: #fff; margin-bottom: 20px; }
 
   <div id="resultArea" class="result-area">
     <button id="shareBtn" class="btn-share">LINE・メールで共有する</button>
-    <a id="pdfLink" class="btn-open" target="_blank">PDFを直接開く</a>
   </div>
 </div>
 
@@ -59,7 +57,6 @@ select { border: 1px solid #ccc; background: #fff; margin-bottom: 20px; }
 const liffId = "2009986845-1gtqJO4E";
 const gasUrl = "https://kantan-geppo.peaks-y-seitoh.workers.dev/api";
 
-let generatedPdfUrl = "";
 let selectedFormatType = 'A';
 let userCompanies = []; // {id, format_type, client_name, sort_order}
 
@@ -190,9 +187,7 @@ document.getElementById('reportForm').onsubmit = function(e) {
       loader.style.display = 'none';
       btn.disabled = false;
       if (res.success) {
-        generatedPdfUrl = res.pdfUrl;
         document.getElementById('resultArea').style.display = 'block';
-        document.getElementById('pdfLink').href = generatedPdfUrl;
       } else {
         alert("作成失敗: " + (res.error || "不明なエラー"));
       }
@@ -210,11 +205,10 @@ document.getElementById('shareBtn').onclick = function() {
   if (navigator.share) {
     navigator.share({
       title: '稼働報告書',
-      text: '今月の稼働報告書（PDF）をお送りします。',
-      url: generatedPdfUrl
+      text: '今月の稼働報告書（PDF）をお送りします。LINEで届いたURLをご利用ください。',
     }).catch(err => console.log(err));
   } else {
-    alert("この端末は一発共有に対応していません。\n下の「PDFを直接開く」からURLをコピーして共有してください。");
+    alert("LINEで届いたPDFのURLをコピーして共有してください。");
   }
 };
 </script>
