@@ -14,7 +14,7 @@ select { border: 1px solid #ccc; background: #fff; margin-bottom: 20px; }
 .btn-submit { background: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
 .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
 .result-area { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px dashed #ccc; }
-.btn-share { background: #28a745; color: white; border: none; font-weight: bold; margin-bottom: 10px; cursor: pointer; width: 100%; padding: 12px; border-radius: 6px; font-size: 16px; }
+.result-notice { color: #28a745; font-weight: bold; font-size: 15px; text-align: center; margin: 0; }
 .loading { display: none; text-align: center; color: #ffc107; font-weight: bold; margin: 15px 0; }
 #formatTabs { display: flex; margin-bottom: 20px; }
 #formatTabs button { flex: 1; padding: 10px; border: 1px solid #007bff; background: #fff; color: #007bff; font-size: 14px; font-weight: bold; cursor: pointer; }
@@ -48,7 +48,7 @@ select { border: 1px solid #ccc; background: #fff; margin-bottom: 20px; }
   </form>
 
   <div id="resultArea" class="result-area">
-    <button id="shareBtn" class="btn-share">LINE・メールで共有する</button>
+    <p class="result-notice">作成中です。完成したらLINEに届きます。</p>
   </div>
 </div>
 
@@ -200,17 +200,6 @@ document.getElementById('reportForm').onsubmit = function(e) {
   });
 };
 
-// 共有ボタン
-document.getElementById('shareBtn').onclick = function() {
-  if (navigator.share) {
-    navigator.share({
-      title: '稼働報告書',
-      text: '今月の稼働報告書（PDF）をお送りします。LINEで届いたURLをご利用ください。',
-    }).catch(err => console.log(err));
-  } else {
-    alert("LINEで届いたPDFのURLをコピーして共有してください。");
-  }
-};
 </script>
 </body>
 </html>
