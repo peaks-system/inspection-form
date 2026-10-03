@@ -98,6 +98,8 @@
         const GAS_URL = "https://kantan-geppo.peaks-y-seitoh.workers.dev/api";
 
         let currentUserId = null;
+        let currentIdToken = null;
+        let sessionExpired = false;
         let blockCount = 0;
         let editingRow = null;
         let userCompanies = [];
@@ -126,6 +128,14 @@
             } else {
                 label.style.display = 'none';
             }
+        }
+
+        function handle401(res) {
+            if (res.status === 401) {
+                if (!sessionExpired) { sessionExpired = true; alert('セッションが切れました。画面を閉じて再度開いてください。'); }
+                throw new Error('SESSION_EXPIRED');
+            }
+            return res.json();
         }
 
         function jstDateStr(offsetDays) {
@@ -162,9 +172,9 @@
         function loadUserCompanies(userId) {
             fetch(GAS_URL, {
                 method: 'POST',
-                body: JSON.stringify({ type: 'get_user_companies', userId: userId })
+                body: JSON.stringify({ type: 'get_user_companies', idToken: currentIdToken, userId: userId })
             })
-            .then(r => r.json())
+            .then(r => handle401(r))
             .then(res => {
                 userCompanies = res.userCompanies || [];
                 updateClientNameDropdown();
@@ -202,9 +212,9 @@
             if (!currentUserId) return;
             fetch(GAS_URL, {
                 method: 'POST',
-                body: JSON.stringify({ type: "expense_list", userId: currentUserId, date: getSelectedDate(), userCompanyId: getSelectedUserCompanyId() })
+                body: JSON.stringify({ type: "expense_list", idToken: currentIdToken, userId: currentUserId, date: getSelectedDate(), userCompanyId: getSelectedUserCompanyId() })
             })
-            .then(res => res.json())
+            .then(res => handle401(res))
             .then(result => {
                 if (!result.success || result.expenses.length === 0) {
                     document.getElementById('savedSection').style.display = 'none';
@@ -245,9 +255,9 @@
             btn.disabled = true;
             fetch(GAS_URL, {
                 method: 'POST',
-                body: JSON.stringify({ type: "expense_delete", userId: currentUserId, row: row })
+                body: JSON.stringify({ type: "expense_delete", idToken: currentIdToken, userId: currentUserId, row: row })
             })
-            .then(res => res.json())
+            .then(res => handle401(res))
             .then(result => {
                 if (result.success) {
                     loadSavedExpenses();
@@ -296,9 +306,9 @@
             document.getElementById('modalSaveBtn').disabled = true;
             fetch(GAS_URL, {
                 method: 'POST',
-                body: JSON.stringify({ type: "expense_update", row: editingRow, data: data })
+                body: JSON.stringify({ type: "expense_update", idToken: currentIdToken, userId: currentUserId, row: editingRow, data: data })
             })
-            .then(res => res.json())
+            .then(res => handle401(res))
             .then(result => {
                 if (result.success) {
                     document.getElementById('editModal').style.display = 'none';
@@ -364,6 +374,7 @@
             .then(profile => {
                 if (!profile) return;
                 currentUserId = profile.userId;
+                currentIdToken = liff.getIDToken();
                 document.getElementById('userInfo').textContent = `ログイン中: ${profile.displayName}`;
                 buildDateSelector();
                 loadUserCompanies(profile.userId);
@@ -396,8 +407,8 @@
             Promise.all(expenses.map(item =>
                 fetch(GAS_URL, {
                     method: 'POST',
-                    body: JSON.stringify({ type: "expense", userId: currentUserId, data: item })
-                }).then(res => res.json())
+                    body: JSON.stringify({ type: "expense", idToken: currentIdToken, userId: currentUserId, data: item })
+                }).then(res => handle401(res))
             ))
             .then(results => {
                 const allSuccess = results.every(r => r.success);

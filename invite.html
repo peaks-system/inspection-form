@@ -63,7 +63,7 @@
             clearButtons();
         }
 
-        function showConfirm(companyName, isExistingUser, inviteDriverId, userId, displayName) {
+        function showConfirm(companyName, isExistingUser, inviteDriverId, userId, displayName, idToken) {
             document.getElementById('spinner').style.display = 'none';
             document.getElementById('title').textContent = '連携の確認';
             document.getElementById('title').className = '';
@@ -98,10 +98,15 @@
                 fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ inviteDriverId: inviteDriverId, userId: userId, displayName: displayName })
+                    body: JSON.stringify({ inviteDriverId: inviteDriverId, idToken: idToken, userId: userId, displayName: displayName })
                 })
                     .then(function (r) { return r.json(); })
+                    .then(function (r) {
+                        if (r.status === 401) { showError('セッションが切れました。画面を閉じて再度開いてください。'); return null; }
+                        return r.json();
+                    })
                     .then(function (data) {
+                        if (!data) return;
                         if (data.success) {
                             showSuccess();
                         } else {
@@ -149,20 +154,26 @@
                 }
 
                 return liff.getProfile().then(function (profile) {
-                    return { profile: profile, inviteDriverId: inviteDriverId };
+                    return { profile: profile, inviteDriverId: inviteDriverId, idToken: liff.getIDToken() };
                 });
             })
             .then(function (result) {
                 if (!result) return null;
                 var profile = result.profile;
                 var inviteDriverId = result.inviteDriverId;
+                var idToken = result.idToken;
+                // check: GET のまま維持、idToken はヘッダーで送信（移行期間中、旧 Worker 向けに userId もクエリで維持）
                 var checkUrl = CHECK_URL
                     + '?inviteDriverId=' + encodeURIComponent(inviteDriverId)
                     + '&userId=' + encodeURIComponent(profile.userId);
-                return fetch(checkUrl)
-                    .then(function (r) { return r.json(); })
+                return fetch(checkUrl, { headers: { 'X-Line-Id-Token': idToken } })
+                    .then(function (r) {
+                        if (r.status === 401) { showError('セッションが切れました。画面を閉じて再度開いてください。'); return null; }
+                        return r.json();
+                    })
                     .then(function (data) {
-                        return { data: data, profile: profile, inviteDriverId: inviteDriverId };
+                        if (!data) return null;
+                        return { data: data, profile: profile, inviteDriverId: inviteDriverId, idToken: idToken };
                     });
             })
             .then(function (result) {
@@ -170,11 +181,12 @@
                 var data = result.data;
                 var profile = result.profile;
                 var inviteDriverId = result.inviteDriverId;
+                var idToken = result.idToken;
                 if (!data.success) {
                     showError(data.error || '連携の確認に失敗しました。');
                     return;
                 }
-                showConfirm(data.companyName, data.isExistingUser, inviteDriverId, profile.userId, profile.displayName);
+                showConfirm(data.companyName, data.isExistingUser, inviteDriverId, profile.userId, profile.displayName, idToken);
             })
             .catch(function (err) {
                 console.error(err);
