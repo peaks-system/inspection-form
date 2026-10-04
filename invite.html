@@ -100,7 +100,6 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ inviteDriverId: inviteDriverId, idToken: idToken, userId: userId, displayName: displayName })
                 })
-                    .then(function (r) { return r.json(); })
                     .then(function (r) {
                         if (r.status === 401) { showError('セッションが切れました。画面を閉じて再度開いてください。'); return null; }
                         return r.json();
